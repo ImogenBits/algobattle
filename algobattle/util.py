@@ -4,7 +4,7 @@ import logging
 import importlib.util
 from pathlib import Path
 from sys import modules
-from typing import Any, Mapping, TypeVar
+from typing import Any, Mapping, Sequence, TypeVar
 from inspect import getmembers, isclass
 from argparse import Action, SUPPRESS
 
@@ -100,6 +100,92 @@ def import_problem_from_path(path: Path) -> Problem:
         raise ValueError
 
     return potential_problems[0]()
+
+
+class Table:
+    """Stores data in a 2D table."""
+
+    def __init__(self, column_names: list[str]) -> None:
+        self.column_names = column_names[:]
+        self._data = []
+
+    def add_row(self, row: Sequence) -> None:
+        """Adds a new row to the table. Raises `ValueError` if it has an incompatible length."""
+        if len(row) != len(self.column_names):
+            raise ValueError
+        self._data.append(list(row))
+
+    @classmethod
+    def from_lists(cls, data: list[list[Any]]) -> Table:
+        """Creates a table from a 2D array."""
+        if not data:
+            raise ValueError
+        table = cls(data[0])
+        for row in data[1:]:
+            table.add_row(row)
+        return table
+
+    @property
+    def num_rows(self) -> int:
+        """Number of rows in the table excluding the header."""
+        return len(self._data)
+
+    @property
+    def num_cols(self) -> int:
+        """Number of columns in the table."""
+        return len(self.column_names)
+
+    def __format__(self, formatspec: str) -> str:
+        if self.num_rows == 0:
+            return ""
+        max_width, max_height = 10000, 10000
+        try:
+            vals = formatspec.split(",")
+            max_width = int(vals[0].strip())
+            max_height = int(vals[1].strip())
+        except ValueError:
+            pass
+
+        horizontal_data_seps = 3 + 2 * self.num_rows <= max_height
+        border = 4 + self.num_rows <= max_height
+        horizontal_header_sep = 2 + self.num_rows <= max_height
+        data = self._data[: min(self.num_rows, max_height - 1)]
+
+        col_widths = [max(len(str(row[i])) for row in [self.column_names, *data]) for i in range(self.num_cols)]
+        if sum(col_widths) + 3 * len(col_widths) + (1 if border else -3) > max_width:
+            avg_width = (max_width - len(col_widths) - (1 if border else -1)) // len(col_widths)
+            col_widths = len(col_widths) * [avg_width]
+
+        horizontal_sep_fmt = "{middle}".join("{sep}" * (width + 2) for width in col_widths)[5:-5]
+        data_fmt = " ║ ".join(f"{{: ^{width}}}" for width in col_widths)
+        if border:
+            horizontal_sep_fmt = "{start}{sep}" + horizontal_sep_fmt + "{sep}{end}"
+            data_fmt = "║ " + data_fmt + " ║"
+        horizontal_sep_fmt += "\n"
+        data_fmt += "\n"
+        if border:
+            top = horizontal_sep_fmt.format(start="╔", middle="╦", end="╗", sep="═")
+            bottom = horizontal_sep_fmt.format(start="╚", middle="╩", end="╝", sep="═")[:-1]
+        else:
+            top = ""
+            bottom = ""
+        if horizontal_data_seps:
+            data_sep = horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─")
+        else:
+            data_sep = ""
+        if horizontal_header_sep:
+            header_sep = horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─")
+        else:
+            header_sep = ""
+
+        data = [[format(element, f" ^{col_widths[i]}")[: col_widths[i]] for i, element in enumerate(row)] for row in data]
+        return (
+            top
+            + data_fmt.format(*self.column_names)
+            + header_sep
+            + data_sep.join(data_fmt.format(*row) for row in data)
+            + bottom
+        )
 
 
 def format_table(table: list[list[Any]], column_spacing: Mapping[int, int] = {}) -> str:
