@@ -117,7 +117,10 @@ class BattleStyle(SharedSubject, ABC):
             raise NotImplementedError
 
         def __str__(self) -> str:
-            return self.fmt_score(self.score)
+            return format(self)
+
+        def __format__(self, formatspec: str) -> str:
+            return format(self.fmt_score(self.score), formatspec)
 
         @staticmethod
         @abstractmethod

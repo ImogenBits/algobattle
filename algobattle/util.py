@@ -4,7 +4,7 @@ import logging
 import importlib.util
 from pathlib import Path
 from sys import modules
-from typing import Any, Mapping, Sequence, TypeVar
+from typing import Any, Sequence, TypeVar
 from inspect import getmembers, isclass
 from argparse import Action, SUPPRESS
 
@@ -186,42 +186,6 @@ class Table:
             + data_sep.join(data_fmt.format(*row) for row in data)
             + bottom
         )
-
-
-def format_table(table: list[list[Any]], column_spacing: Mapping[int, int] = {}) -> str:
-    """Formats a table of data nicely.
-
-    Parameters
-    ----------
-    table : list[list[Any]]
-        The table to format, inner lists are rows and all assumed to have equal length.
-    column_spacing : Mapping[int, int]
-        Mapping of row numbers to a minimum character width, by default {}
-
-    Returns
-    -------
-    str
-        The formatted table.
-    """
-    if len(table) == 0:
-        return "\n"
-
-    table = [[str(element) for element in row] for row in table]
-    col_sizes = [len(max((row[i] for row in table), key=len)) for i in range(len(table[0]))]
-    for i, k in column_spacing.items():
-        if col_sizes[i] < k:
-            col_sizes[i] = k
-
-    horizontal_sep_fmt = "{start}" + "{middle}".join("{sep}" * (width + 2) for width in col_sizes) + "{end}\n"
-    top = horizontal_sep_fmt.format(start="╔", middle="╦", end="╗", sep="═")
-    middle = horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─")
-    bottom = horizontal_sep_fmt.format(start="╚", middle="╩", end="╝", sep="═")[:-1]
-
-    content_fmt = "║ " + " ║ ".join(f"{{: ^{width}}}" for width in col_sizes) + " ║\n"
-
-    res = top + middle.join(content_fmt.format(*row) for row in table) + bottom
-
-    return res
 
 
 # this should probably be done with a library

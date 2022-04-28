@@ -59,6 +59,9 @@ class Team:
     def __str__(self) -> str:
         return self.name
 
+    def __format__(self, formatspec: str) -> str:
+        return format(self.name, formatspec)
+
     def __eq__(self, o: object) -> bool:
         if isinstance(o, Team):
             return self.name == o.name

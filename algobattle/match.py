@@ -13,7 +13,7 @@ from algobattle.fight import Fight
 from algobattle.team import Team, MatchupInfo, Matchup
 from algobattle.problem import Problem
 from algobattle.docker import DockerConfig, DockerError
-from algobattle.util import format_table
+from algobattle.util import Table
 
 
 logger = logging.getLogger("algobattle.match")
@@ -87,14 +87,14 @@ class Match(SharedSubject):
         battle = battle_style(self.problem, fight, **battle_options)
         results = MatchResult(self.battle_matchups, rounds)
 
-        self.notify(results.format())
+        self.notify(results)
 
         for matchup in self.battle_matchups:
             for i in range(rounds):
                 logger.info(f'{"#" * 20}  Running Battle {i + 1}/{rounds}  {"#" * 20}')
                 result = battle.run(matchup)
                 results[matchup].append(result)
-                self.notify(results.format())
+                self.notify(results)
 
         return results
 
@@ -116,7 +116,7 @@ class MatchResult(dict[Matchup, list[BattleStyle.Result]]):
         for matchup in matchups:
             self[matchup] = []
 
-    def format(self) -> str:
+    def __format__(self, formatspec: str) -> str:
         """Format the match_data for the battle battle style as a string.
 
         The output should not exceed 80 characters, assuming the default
@@ -127,8 +127,7 @@ class MatchResult(dict[Matchup, list[BattleStyle.Result]]):
         str
             A formatted string on the basis of the match_data.
         """
-        table = []
-        table.append(["GEN", "SOL", *range(1, self.rounds + 1), "AVG"])
+        table = Table(["GEN", "SOL", *(str(i) for i in range(1, self.rounds + 1)), "AVG"])
 
         for matchup, results in self.items():
             padding = [""] * (self.rounds - len(results))
@@ -136,12 +135,12 @@ class MatchResult(dict[Matchup, list[BattleStyle.Result]]):
                 avg = ""
             else:
                 avg = results[0].fmt_score(sum(r.score for r in results) / len(results))
-            table.append([matchup.generator, matchup.solver, *results, *padding, avg])
+            table.add_row([matchup.generator, matchup.solver, *results, *padding, avg])
 
-        return format_table(table, {i + 2: 5 for i in range(self.rounds)})
+        return format(table, formatspec)
 
     def __str__(self) -> str:
-        return self.format()
+        return format(self)
 
     def calculate_points(self, achievable_points: int) -> dict[Team, float]:
         """Calculate the number of achieved points, given results.
