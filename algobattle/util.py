@@ -2,9 +2,10 @@
 from __future__ import annotations
 import logging
 import importlib.util
+from math import ceil
 from pathlib import Path
 from sys import modules
-from typing import Any, Sequence, TypeVar
+from typing import Any, Iterable, Iterator, Sequence, TypeVar
 from inspect import getmembers, isclass
 from argparse import Action, SUPPRESS
 
@@ -102,10 +103,23 @@ def import_problem_from_path(path: Path) -> Problem:
     return potential_problems[0]()
 
 
+T = TypeVar("T")
+
+
+def intersperse(elem: T, iterable: Iterable[T]) -> Iterator[T]:
+    """Inserts `elem` between each element of `iterable`."""
+    it = iter(iterable)
+    yield next(it)
+    for e in it:
+        yield elem
+        yield e
+
+
 class Table:
     """Stores data in a 2D table."""
 
-    def __init__(self, column_names: list[str]) -> None:
+    def __init__(self, column_names: list[str], num_header_cols: int = 0) -> None:
+        self.num_header_cols = num_header_cols
         self.column_names = column_names[:]
         self._data = []
 
@@ -116,11 +130,11 @@ class Table:
         self._data.append(list(row))
 
     @classmethod
-    def from_lists(cls, data: list[list[Any]]) -> Table:
+    def from_lists(cls, data: list[list[Any]], num_header_cols: int = 0) -> Table:
         """Creates a table from a 2D array."""
         if not data:
             raise ValueError
-        table = cls(data[0])
+        table = cls(data[0], num_header_cols)
         for row in data[1:]:
             table.add_row(row)
         return table
@@ -136,56 +150,61 @@ class Table:
         return len(self.column_names)
 
     def __format__(self, formatspec: str) -> str:
-        if self.num_rows == 0:
+        if self.num_rows == 0 or self.num_cols == 0:
             return ""
         max_width, max_height = 10000, 10000
         try:
             vals = formatspec.split(",")
             max_width = int(vals[0].strip())
             max_height = int(vals[1].strip())
+        except IndexError:
+            pass
         except ValueError:
             pass
+        data = [[str(e) for e in row] for row in self._data]
 
         horizontal_data_seps = 3 + 2 * self.num_rows <= max_height
         border = 4 + self.num_rows <= max_height
         horizontal_header_sep = 2 + self.num_rows <= max_height
-        data = self._data[: min(self.num_rows, max_height - 1)]
+        data = data[: min(self.num_rows, max_height - 1)]
 
-        col_widths = [max(len(str(row[i])) for row in [self.column_names, *data]) for i in range(self.num_cols)]
-        if sum(col_widths) + 3 * len(col_widths) + (1 if border else -3) > max_width:
-            avg_width = (max_width - len(col_widths) - (1 if border else -1)) // len(col_widths)
-            col_widths = len(col_widths) * [avg_width]
+        col_widths = [max(len(row[i]) for row in [self.column_names, *data]) for i in range(self.num_cols)]
+        for i in range(self.num_header_cols, self.num_cols):
+            col_widths[i] = max(5, col_widths[i])
+        if sum(col_widths) + 3 * (len(col_widths) - 1) + (4 if border else 0) <= max_width:
+            vertical_sep_width = 3
+        else:
+            vertical_sep_width = 1
+        unused_width = max_width - 2 * ceil(vertical_sep_width / 2) + vertical_sep_width
+        num_cols = len(col_widths)
+        for i, width in enumerate(col_widths):
+            unused_width -= width + vertical_sep_width
+            if unused_width < 0:
+                num_cols = i
+        data = [row[:num_cols] for row in data]
+        col_widths = col_widths[:num_cols]
 
-        horizontal_sep_fmt = "{middle}".join("{sep}" * (width + 2) for width in col_widths)[5:-5]
-        data_fmt = " ║ ".join(f"{{: ^{width}}}" for width in col_widths)
+        border_sep_padding = "{sep}" * (vertical_sep_width // 2)
+        vertical_sep_fmt = border_sep_padding + "{middle}" + border_sep_padding
+        horizontal_sep_fmt = vertical_sep_fmt.join("{sep}" * width for width in col_widths)
+        data_fmt = vertical_sep_fmt.join(f"{{: ^{width}}}" for width in col_widths)
         if border:
-            horizontal_sep_fmt = "{start}{sep}" + horizontal_sep_fmt + "{sep}{end}"
-            data_fmt = "║ " + data_fmt + " ║"
-        horizontal_sep_fmt += "\n"
-        data_fmt += "\n"
-        if border:
-            top = horizontal_sep_fmt.format(start="╔", middle="╦", end="╗", sep="═")
-            bottom = horizontal_sep_fmt.format(start="╚", middle="╩", end="╝", sep="═")[:-1]
-        else:
-            top = ""
-            bottom = ""
-        if horizontal_data_seps:
-            data_sep = horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─")
-        else:
-            data_sep = ""
+            horizontal_sep_fmt = "{start}" + border_sep_padding + horizontal_sep_fmt + border_sep_padding + "{end}"
+            data_fmt = "{start}" + border_sep_padding + data_fmt + border_sep_padding + "{end}"
+
+        out = []
+        out.append(data_fmt.format(*self.column_names, start="║", middle="║", end="║", sep=" "))
         if horizontal_header_sep:
-            header_sep = horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─")
-        else:
-            header_sep = ""
+            out.append(horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─"))
+        data = [data_fmt.format(*row, start="║", middle="║", end="║", sep=" ") for row in data]
+        if horizontal_data_seps:
+            data = intersperse(horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─"), data)
+        out += data
+        if border:
+            out.insert(0, horizontal_sep_fmt.format(start="╔", middle="╦", end="╗", sep="═"))
+            out.append(horizontal_sep_fmt.format(start="╚", middle="╩", end="╝", sep="═"))
 
-        data = [[format(element, f" ^{col_widths[i]}")[: col_widths[i]] for i, element in enumerate(row)] for row in data]
-        return (
-            top
-            + data_fmt.format(*self.column_names)
-            + header_sep
-            + data_sep.join(data_fmt.format(*row) for row in data)
-            + bottom
-        )
+        return "\n".join(out)
 
 
 # this should probably be done with a library
