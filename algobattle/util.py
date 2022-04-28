@@ -152,22 +152,31 @@ class Table:
     def __format__(self, formatspec: str) -> str:
         if self.num_rows == 0 or self.num_cols == 0:
             return ""
-        max_width, max_height = 10000, 10000
-        try:
-            vals = formatspec.split(",")
-            max_width = int(vals[0].strip())
-            max_height = int(vals[1].strip())
-        except IndexError:
-            pass
-        except ValueError:
-            pass
+        vals = formatspec.split(",")
+        args = []
+        for x in vals:
+            try:
+                args.append(int(x.strip()))
+            except ValueError:
+                pass
+        return self.format(*args)
+
+    def format(self, max_width: int = 10000, max_height: int = 10000):
+        """Formats the table into a multiline string."""
         data = [[str(e) for e in row] for row in self._data]
 
-        horizontal_data_seps = 3 + 2 * self.num_rows <= max_height
+        # calculating how much vertical space we need, if the full table is too high we first drop the lines between data
+        # entries, if it still is too high then the outer border, then the line between the column names and data.
+        # should we then still not have enough space we have to truncate the data.
+        horizontal_data_seps = 4 + self.num_rows + (self.num_rows - 1) <= max_height
         border = 4 + self.num_rows <= max_height
         horizontal_header_sep = 2 + self.num_rows <= max_height
         data = data[: min(self.num_rows, max_height - 1)]
 
+        # similar process for vertical space. here the only unnessecary space is the blank space around the seperating
+        # lines, so if that isn't enough we have to drop data right away.
+        # the columns will all be the width of its longest entry, but data columns are at least 5 wide.
+        # this gives us enough space to always format and align the results nicely.
         col_widths = [max(len(row[i]) for row in [self.column_names, *data]) for i in range(self.num_cols)]
         for i in range(self.num_header_cols, self.num_cols):
             col_widths[i] = max(5, col_widths[i])
@@ -184,6 +193,11 @@ class Table:
         data = [row[:num_cols] for row in data]
         col_widths = col_widths[:num_cols]
 
+        # we can now create format strings that specifiy the overall shape of each row. they will look something like this:
+        # {start}{sep}{data}{middle}{data}{middle}{middle}{end}
+        # or
+        # {start}{sep}{sep}{sep}{middle}{sep}{sep}{sep}{end}
+        # for a data and seperator row respectively.
         border_sep_padding = "{sep}" * (vertical_sep_width // 2)
         vertical_sep_fmt = border_sep_padding + "{middle}" + border_sep_padding
         horizontal_sep_fmt = vertical_sep_fmt.join("{sep}" * width for width in col_widths)
@@ -192,6 +206,9 @@ class Table:
             horizontal_sep_fmt = "{start}" + border_sep_padding + horizontal_sep_fmt + border_sep_padding + "{end}"
             data_fmt = "{start}" + border_sep_padding + data_fmt + border_sep_padding + "{end}"
 
+        # each format string can now be interpolated. the different kinds of seperators are used to get the right shape of
+        # ASCII line art so that they all connect nicely. start, middle, and end are for pipe like characters that have the
+        # right connection to their surroundings, sep is the filler character used to make long horizontal lines
         out = []
         out.append(data_fmt.format(*self.column_names, start="║", middle="║", end="║", sep=" "))
         if horizontal_header_sep:
