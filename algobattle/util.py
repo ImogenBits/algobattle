@@ -223,6 +223,10 @@ class Table:
 
         return "\n".join(out)
 
+    def formatted_min_height(self) -> int:
+        """Get minimum height of formatted table that still has full info."""
+        return self.num_rows + 1
+
 
 # this should probably be done with a library
 # (well really this should probably not be done at all but its cute)

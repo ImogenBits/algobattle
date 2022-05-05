@@ -9,6 +9,7 @@ from collections import deque
 
 from algobattle import __version__ as version
 from algobattle.events import SharedObserver, Subject
+from algobattle.match import MatchResult
 from algobattle.util import inherit_docs
 
 
@@ -49,8 +50,10 @@ class Ui(SharedObserver):
             handler = BufferHandler(self, logging_level, num_records)
             logger.addHandler(handler)
             self.sections: dict[str, Any] = {
+                "systeminfo": None,
                 "match": None,
                 "battle": None,
+                "fight": None,
                 "logs": None,
             }
 
@@ -68,27 +71,49 @@ class Ui(SharedObserver):
         """Updates the specified section of the UI."""
         if section not in self.sections:
             return
-
         self.sections[section] = data
-        results = "\n\n".join(self.titles[s] + str(d) for s, d in self.sections.items() if d is not None and s != "logs")
+        rows, cols = self.stdscr.getmaxyx()
+        formatted: dict[str, list[str]] = {section: [] for section in self.sections}
 
-        out = "\n".join([
-            r"              _    _             _           _   _   _       ",
-            r"             / \  | | __ _  ___ | |__   __ _| |_| |_| | ___  ",
-            r"            / _ \ | |/ _` |/ _ \| |_ \ / _` | __| __| |/ _ \ ",
-            r"           / ___ \| | (_| | (_) | |_) | (_| | |_| |_| |  __/ ",
-            r"          /_/   \_\_|\__, |\___/|_.__/ \__,_|\__|\__|_|\___| ",
-            r"                      |___/                                  ",
-            "",
-            f"Algobattle version {version}",
-            f"{results}",
-            "",
-            "-------------------------------------------------------------",
-            f"{self.sections['logs']}",
-            "-------------------------------------------------------------",
-        ])
+        def line_count(d: dict[str, Any]) -> int:
+            return sum(len(i) for i in d.values())
+
+        if self.sections["systeminfo"] is not None:
+            formatted["systeminfo"] = [str(self.sections["systeminfo"]), ""]
+
+        if self.sections["battle"] is not None:
+            formatted["battle"] = [f"{key}: {val}" for key, val in self.sections["battle"].items()] + [""]
+
+        if self.sections["fight"] is not None:
+            formatted["fight"] = [f"{key}: {val}" for key, val in self.sections["fight"].items()] + [""]
+
+        if self.sections["logs"] is not None:
+            formatted["logs"] = ["-" * cols] + [line[:cols] for line in self.sections["logs"].split("\n")] + ["-" * cols]
+
+        if self.sections["match"] is not None:
+            min_len = self.sections["match"].formatted_min_height()
+            free_space = max(min_len, rows - line_count(formatted))
+            formatted["match"] = self.sections["match"].format(cols, free_space).split("\n") + [""]
+
+        out = [line for section in formatted.values() for line in section]
+
+        if len(out) + 6 <= rows:
+            logo = [
+                r"     _    _             _           _   _   _       ",
+                r"    / \  | | __ _  ___ | |__   __ _| |_| |_| | ___  ",
+                r"   / _ \ | |/ _` |/ _ \| |_ \ / _` | __| __| |/ _ \ ",
+                r"  / ___ \| | (_| | (_) | |_) | (_| | |_| |_| |  __/ ",
+                r" /_/   \_\_|\__, |\___/|_.__/ \__,_|\__|\__|_|\___| ",
+                r"             |___/                                  ",
+            ]
+            out = [f"{line: ^cols}" for line in logo] + out
+        elif len(out) + 1 <= rows:
+            out = [f"{'Algobattle': ^cols}"] + out
+        else:
+            out = out[:rows]
+
         self.stdscr.clear()
-        self.stdscr.addstr(0, 0, out)
+        self.stdscr.addstr(0, 0, "\n".join(formatted))
         self.stdscr.refresh()
         self.stdscr.nodelay(1)
         c = self.stdscr.getch()
