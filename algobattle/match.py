@@ -116,7 +116,7 @@ class MatchResult(dict[Matchup, list[BattleStyle.Result]]):
         for matchup in matchups:
             self[matchup] = []
 
-    def __format__(self, formatspec: str) -> str:
+    def format(self, max_width: int = 10000, max_height: int = 10000) -> str:
         """Format the match_data for the battle battle style as a string.
 
         The output should not exceed 80 characters, assuming the default
@@ -137,10 +137,10 @@ class MatchResult(dict[Matchup, list[BattleStyle.Result]]):
                 avg = results[0].fmt_score(sum(r.score for r in results) / len(results))
             table.add_row([matchup.generator, matchup.solver, *results, *padding, avg])
 
-        return format(table, formatspec)
+        return table.format(max_width, max_height)
 
     def __str__(self) -> str:
-        return format(self)
+        return self.format()
 
     def calculate_points(self, achievable_points: int) -> dict[Team, float]:
         """Calculate the number of achieved points, given results.

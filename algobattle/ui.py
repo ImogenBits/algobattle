@@ -73,16 +73,14 @@ class Ui(SharedObserver):
             return
         self.sections[section] = data
         rows, cols = self.stdscr.getmaxyx()
+        cols -= 1
         formatted: dict[str, list[str]] = {section: [] for section in self.sections}
-
-        def line_count(d: dict[str, Any]) -> int:
-            return sum(len(i) for i in d.values())
 
         if self.sections["systeminfo"] is not None:
             formatted["systeminfo"] = [str(self.sections["systeminfo"]), ""]
 
         if self.sections["battle"] is not None:
-            formatted["battle"] = [f"{key}: {val}" for key, val in self.sections["battle"].items()] + [""]
+            formatted["battle"] = self.sections["battle"].split("\n") + [""]
 
         if self.sections["fight"] is not None:
             formatted["fight"] = [f"{key}: {val}" for key, val in self.sections["fight"].items()] + [""]
@@ -91,13 +89,12 @@ class Ui(SharedObserver):
             formatted["logs"] = ["-" * cols] + [line[:cols] for line in self.sections["logs"].split("\n")] + ["-" * cols]
 
         if self.sections["match"] is not None:
-            min_len = self.sections["match"].formatted_min_height()
-            free_space = max(min_len, rows - line_count(formatted))
+            free_space = rows - sum(len(i) for i in formatted.values())
             formatted["match"] = self.sections["match"].format(cols, free_space).split("\n") + [""]
 
-        out = [line for section in formatted.values() for line in section]
+        out = [line for section in formatted.values() for line in section][:rows]
 
-        if len(out) + 6 <= rows:
+        if len(out) + 6 <= rows and 52 <= cols:
             logo = [
                 r"     _    _             _           _   _   _       ",
                 r"    / \  | | __ _  ___ | |__   __ _| |_| |_| | ___  ",
@@ -106,14 +103,14 @@ class Ui(SharedObserver):
                 r" /_/   \_\_|\__, |\___/|_.__/ \__,_|\__|\__|_|\___| ",
                 r"             |___/                                  ",
             ]
-            out = [f"{line: ^cols}" for line in logo] + out
-        elif len(out) + 1 <= rows:
-            out = [f"{'Algobattle': ^cols}"] + out
+            out = [line.center(cols) for line in logo] + out
+        elif len(out) + 1 <= rows and 10 <= cols:
+            out = ["Algobattle".center(cols)] + out
         else:
             out = out[:rows]
 
         self.stdscr.clear()
-        self.stdscr.addstr(0, 0, "\n".join(formatted))
+        self.stdscr.addstr(0, 0, "\n".join(out))
         self.stdscr.refresh()
         self.stdscr.nodelay(1)
         c = self.stdscr.getch()

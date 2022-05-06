@@ -168,10 +168,10 @@ class Table:
         # calculating how much vertical space we need, if the full table is too high we first drop the lines between data
         # entries, if it still is too high then the outer border, then the line between the column names and data.
         # should we then still not have enough space we have to truncate the data.
+        max_height = max(self.num_rows + 1, max_height)
         horizontal_data_seps = 4 + self.num_rows + (self.num_rows - 1) <= max_height
         border = 4 + self.num_rows <= max_height
         horizontal_header_sep = 2 + self.num_rows <= max_height
-        data = data[: min(self.num_rows, max_height - 1)]
 
         # similar process for vertical space. here the only unnessecary space is the blank space around the seperating
         # lines, so if that isn't enough we have to drop data right away.
@@ -222,10 +222,6 @@ class Table:
             out.append(horizontal_sep_fmt.format(start="╚", middle="╩", end="╝", sep="═"))
 
         return "\n".join(out)
-
-    def formatted_min_height(self) -> int:
-        """Get minimum height of formatted table that still has full info."""
-        return self.num_rows + 1
 
 
 # this should probably be done with a library
