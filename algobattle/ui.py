@@ -93,7 +93,7 @@ def _format_table(table: Table, max_width: int, max_height: int) -> list[str]:
     return out
 
 
-def _format_obj(obj: Table | Mapping | str | None, max_width: int = 10000, max_height: int = 10000) -> list[str]:
+def _format_obj(obj: SharedData, max_width: int = 10000, max_height: int = 10000) -> list[str]:
     if isinstance(obj, Table):
         return _format_table(obj, max_width, max_height)
     elif isinstance(obj, Mapping):
@@ -153,12 +153,20 @@ class Ui(SharedObserver):
             formatted[section] = _format_obj(self.sections[section], max_width=cols)
 
         logs = _format_obj(self.sections["logs"], max_width=cols - 2)
-        formatted["logs"] = [f"╔{'logs':═^cols - 2}╗"] + ["║" + line + "║" for line in logs] + ["╚" + "═" * (cols - 2) + "╝"]
+        formatted["logs"] = (
+            ["╔" + " logs ".center(cols - 2, "═") + "╗"]
+            + ["║" + line + "║" for line in logs]
+            + ["╚" + "═" * (cols - 2) + "╝"]
+        )
 
         free_space = rows - sum(len(i) for i in formatted.values()) - sum(1 for s in formatted.values() if s != [])
         formatted["match"] = _format_obj(self.sections["match"], cols, free_space)
 
-        out = [line for section in formatted.values() for line in section]
+        out = []
+        for val in formatted.values():
+            if val:
+                out += val + [""]
+        out = out[:-1]
 
         if len(out) + 6 <= rows and 52 <= cols:
             logo = [
