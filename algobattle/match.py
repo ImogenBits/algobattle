@@ -14,6 +14,7 @@ from algobattle.team import Team, MatchupInfo, Matchup
 from algobattle.problem import Problem
 from algobattle.docker import DockerConfig, DockerError
 from algobattle.util import Table
+from algobattle.ui import _format_table
 
 
 logger = logging.getLogger("algobattle.match")
@@ -87,14 +88,14 @@ class Match(SharedSubject):
         battle = battle_style(self.problem, fight, **battle_options)
         results = MatchResult(self.battle_matchups, rounds)
 
-        self.notify(results)
+        self.notify(results.data_table())
 
         for matchup in self.battle_matchups:
             for i in range(rounds):
                 logger.info(f'{"#" * 20}  Running Battle {i + 1}/{rounds}  {"#" * 20}')
                 result = battle.run(matchup)
                 results[matchup].append(result)
-                self.notify(results)
+                self.notify(results.data_table())
 
         return results
 
@@ -116,16 +117,10 @@ class MatchResult(dict[Matchup, list[BattleStyle.Result]]):
         for matchup in matchups:
             self[matchup] = []
 
-    def format(self, max_width: int = 10000, max_height: int = 10000) -> str:
-        """Format the match_data for the battle battle style as a string.
+    def data_table(self) -> Table:
+        """Returns a table containing all the information about the match.
 
-        The output should not exceed 80 characters, assuming the default
-        of a battle of 5 rounds.
-
-        Returns
-        -------
-        str
-            A formatted string on the basis of the match_data.
+        The columns are the matchup teams, then the round results, and then the average round result.
         """
         table = Table(["GEN", "SOL", *(str(i) for i in range(1, self.rounds + 1)), "AVG"])
 
@@ -137,10 +132,10 @@ class MatchResult(dict[Matchup, list[BattleStyle.Result]]):
                 avg = results[0].fmt_score(sum(r.score for r in results) / len(results))
             table.add_row([matchup.generator, matchup.solver, *results, *padding, avg])
 
-        return table.format(max_width, max_height)
-
+        return table
+    
     def __str__(self) -> str:
-        return self.format()
+        return "\n".join(_format_table(self.data_table(), 10000, 10000))
 
     def calculate_points(self, achievable_points: int) -> dict[Team, float]:
         """Calculate the number of achieved points, given results.
