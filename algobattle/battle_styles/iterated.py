@@ -3,7 +3,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import logging
-from typing import Iterator
 
 from algobattle.battle_style import BattleStyle
 from algobattle.problem import Problem
@@ -118,15 +117,13 @@ class Iterated(BattleStyle):
                     n -= i**exponent - 1
                     i = 1
 
-        return self.Result(n_cap, maximum_reached_n, n)
+        return self.Result(maximum_reached_n)
 
     @dataclass
     class Result(BattleStyle.Result):
         """The result of an iterated battle."""
 
-        cap: int = 0
         solved: int = 0
-        attempting: int = 0
 
         @inherit_docs
         @property
@@ -140,7 +137,7 @@ class Iterated(BattleStyle):
                 return cls()
             else:
                 avg = sum(res.solved for res in results) // len(results)
-                return cls(0, avg, 0)
+                return cls(avg)
 
         @inherit_docs
         def __str__(self) -> str:
