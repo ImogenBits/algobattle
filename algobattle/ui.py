@@ -3,14 +3,15 @@ from __future__ import annotations
 import curses
 import logging
 from logging.handlers import MemoryHandler
+from math import ceil
 from sys import stdout
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, Mapping, TypeVar, overload
 from collections import deque
 
 from algobattle import __version__ as version
 from algobattle.events import SharedObserver, Subject
 from algobattle.match import MatchResult
-from algobattle.util import inherit_docs
+from algobattle.util import Table, inherit_docs, intersperse
 
 
 logger = logging.getLogger("algobattle.ui")
@@ -29,6 +30,80 @@ def check_for_terminal(function: F) -> F:
             return function(self, *args, **kwargs)
 
     return wrapper  # type: ignore
+
+
+def _format_table(table: Table, max_width: int, max_height: int) -> list[str]:
+    """Formats the table into a multiline string."""
+    data = [[str(e) for e in row] for row in table._data]
+
+    # calculating how much vertical space we need, if the full table is too high we first drop the lines between data
+    # entries, if it still is too high then the outer border, then the line between the column names and data.
+    # should we then still not have enough space we have to truncate the data.
+    max_height = max(table.num_rows + 1, max_height)
+    horizontal_data_seps = 4 + table.num_rows + (table.num_rows - 1) <= max_height
+    border = 4 + table.num_rows <= max_height
+    horizontal_header_sep = 2 + table.num_rows <= max_height
+
+    # similar process for vertical space. here the only unnessecary space is the blank space around the seperating
+    # lines, so if that isn't enough we have to drop data right away.
+    # the columns will all be the width of its longest entry, but data columns are at least 5 wide.
+    # this gives us enough space to always format and align the results nicely.
+    col_widths = [max(len(row[i]) for row in [table.column_names, *data]) for i in range(table.num_cols)]
+    for i in range(table.num_header_cols, table.num_cols):
+        col_widths[i] = max(5, col_widths[i])
+    if sum(col_widths) + 3 * (len(col_widths) - 1) + (4 if border else 0) <= max_width:
+        vertical_sep_width = 3
+    else:
+        vertical_sep_width = 1
+    unused_width = max_width - 2 * ceil(vertical_sep_width / 2) + vertical_sep_width
+    num_cols = len(col_widths)
+    for i, width in enumerate(col_widths):
+        unused_width -= width + vertical_sep_width
+        if unused_width < 0:
+            num_cols = i
+    data = [row[:num_cols] for row in data]
+    col_widths = col_widths[:num_cols]
+
+    # we can now create format strings that specifiy the overall shape of each row. they will look something like this:
+    # {start}{sep}{data}{middle}{data}{middle}{middle}{end}
+    # or
+    # {start}{sep}{sep}{sep}{middle}{sep}{sep}{sep}{end}
+    # for a data and seperator row respectively.
+    border_sep_padding = "{sep}" * (vertical_sep_width // 2)
+    vertical_sep_fmt = border_sep_padding + "{middle}" + border_sep_padding
+    horizontal_sep_fmt = vertical_sep_fmt.join("{sep}" * width for width in col_widths)
+    data_fmt = vertical_sep_fmt.join(f"{{: ^{width}}}" for width in col_widths)
+    if border:
+        horizontal_sep_fmt = "{start}" + border_sep_padding + horizontal_sep_fmt + border_sep_padding + "{end}"
+        data_fmt = "{start}" + border_sep_padding + data_fmt + border_sep_padding + "{end}"
+
+    # each format string can now be interpolated. the different kinds of seperators are used to get the right shape of
+    # ASCII line art so that they all connect nicely. start, middle, and end are for pipe like characters that have the
+    # right connection to their surroundings, sep is the filler character used to make long horizontal lines
+    out = []
+    out.append(data_fmt.format(*table.column_names, start="║", middle="║", end="║", sep=" "))
+    if horizontal_header_sep:
+        out.append(horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─"))
+    data = [data_fmt.format(*row, start="║", middle="║", end="║", sep=" ") for row in data]
+    if horizontal_data_seps:
+        data = intersperse(horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─"), data)
+    out += data
+    if border:
+        out.insert(0, horizontal_sep_fmt.format(start="╔", middle="╦", end="╗", sep="═"))
+        out.append(horizontal_sep_fmt.format(start="╚", middle="╩", end="╝", sep="═"))
+
+    return out
+
+
+def _format_obj(obj: Table | Mapping | str | None, max_width: int = 10000, max_height: int = 10000) -> list[str]:
+    if isinstance(obj, Table):
+        return _format_table(obj, max_width, max_height)
+    elif isinstance(obj, Mapping):
+        return [f"{key}: {val}" for key, val in obj.items()]
+    elif isinstance(obj, str):
+        return obj.split("\n")
+    elif obj is None:
+        return []
 
 
 class Ui(SharedObserver):
@@ -76,21 +151,14 @@ class Ui(SharedObserver):
         cols -= 1
         formatted: dict[str, list[str]] = {section: [] for section in self.sections}
 
-        if self.sections["systeminfo"] is not None:
-            formatted["systeminfo"] = [str(self.sections["systeminfo"]), ""]
+        for section in ("systeminfo", "battle", "fight"):
+            formatted[section] = _format_obj(self.sections[section], max_width=cols)
 
-        if self.sections["battle"] is not None:
-            formatted["battle"] = self.sections["battle"].split("\n") + [""]
+        logs = _format_obj(self.sections["logs"], max_width=cols - 2)
+        formatted["logs"] = [f"╔{'logs':═^cols - 2}╗"] + ["║" + line + "║" for line in logs] + ["╚" + "═" * (cols - 2) + "╝"]
 
-        if self.sections["fight"] is not None:
-            formatted["fight"] = [f"{key}: {val}" for key, val in self.sections["fight"].items()] + [""]
-
-        if self.sections["logs"] is not None:
-            formatted["logs"] = ["-" * cols] + [line[:cols] for line in self.sections["logs"].split("\n")] + ["-" * cols]
-
-        if self.sections["match"] is not None:
-            free_space = rows - sum(len(i) for i in formatted.values())
-            formatted["match"] = self.sections["match"].format(cols, free_space).split("\n") + [""]
+        free_space = rows - sum(len(i) for i in formatted.values()) - sum(1 for s in formatted.values() if s != [])
+        formatted["match"] = self.sections["match"].format(cols, free_space).split("\n") + [""]
 
         out = [line for section in formatted.values() for line in section][:rows]
 
