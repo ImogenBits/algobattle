@@ -73,17 +73,21 @@ def _format_table(table: Table, max_width: int, max_height: int) -> list[str]:
     vertical_sep_fmt = border_sep_padding + "{middle}" + border_sep_padding
     horizontal_sep_fmt = vertical_sep_fmt.join("{sep}" * width for width in col_widths)
     horizontal_sep_fmt = replace_nth(horizontal_sep_fmt, "{middle}", "{middle_heavy}", table.num_header_cols)
-    data_fmt = vertical_sep_fmt.join(f"{{: ^{width}}}" for width in col_widths)
-    data_fmt = replace_nth(data_fmt, "{middle}", "{middle_heavy}", table.num_header_cols)
+    header_fmt = vertical_sep_fmt.join(f"{{: ^{width}}}" for width in col_widths)
+    header_fmt = replace_nth(header_fmt, "{middle}", "{middle_heavy}", table.num_header_cols)
+    data_fmt = header_fmt.replace("^", ">").replace(">", "^", table.num_header_cols)    # right align the data entries
     if border:
-        horizontal_sep_fmt = "{start}" + border_sep_padding + horizontal_sep_fmt + border_sep_padding + "{end}"
-        data_fmt = "{start}" + border_sep_padding + data_fmt + border_sep_padding + "{end}"
+        def pad(s: str) -> str:
+            return "{start}" + border_sep_padding + s + border_sep_padding + "{end}"
+        horizontal_sep_fmt = pad(horizontal_sep_fmt)
+        data_fmt = pad(data_fmt)
+        header_fmt = pad(header_fmt)
 
     # each format string can now be interpolated. the different kinds of seperators are used to get the right shape of
     # ASCII line art so that they all connect nicely. start, middle, and end are for pipe like characters that have the
     # right connection to their surroundings, sep is the filler character used to make long horizontal lines
     out = []
-    out.append(data_fmt.format(*table.column_names, start="║", middle="│", middle_heavy="║", end="║", sep=" "))
+    out.append(header_fmt.format(*table.column_names, start="║", middle="│", middle_heavy="║", end="║", sep=" "))
     if horizontal_header_sep:
         out.append(horizontal_sep_fmt.format(start="╠", middle="╪", middle_heavy="╬", end="╣", sep="═"))
     data = [data_fmt.format(*row, start="║", middle="│", middle_heavy="║", end="║", sep=" ") for row in data]
