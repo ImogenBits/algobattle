@@ -83,7 +83,7 @@ def _format_table(table: Table, max_width: int, max_height: int) -> list[str]:
     out = []
     out.append(data_fmt.format(*table.column_names, start="║", middle="║", end="║", sep=" "))
     if horizontal_header_sep:
-        out.append(horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─"))
+        out.append(horizontal_sep_fmt.format(start="╠", middle="╬", end="╣", sep="═"))
     data = [data_fmt.format(*row, start="║", middle="║", end="║", sep=" ") for row in data]
     if horizontal_data_seps:
         data = intersperse(horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─"), data)
