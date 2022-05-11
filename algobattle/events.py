@@ -1,7 +1,7 @@
 """basic event handling module."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Generic, Mapping, TypeVar, Union
+from typing import ClassVar, Generic, Mapping, TypeVar, Union
 
 from algobattle.util import Table
 

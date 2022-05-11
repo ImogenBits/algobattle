@@ -3,9 +3,8 @@ from __future__ import annotations
 import curses
 import logging
 from logging.handlers import MemoryHandler
-from math import ceil
 from sys import stdout
-from typing import Any, Callable, Mapping, TypeVar
+from typing import Callable, Mapping, TypeVar
 from collections import deque
 
 from algobattle.events import SharedData, SharedObserver, Subject
