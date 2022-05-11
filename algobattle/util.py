@@ -2,7 +2,6 @@
 from __future__ import annotations
 import logging
 import importlib.util
-from math import ceil
 from pathlib import Path
 from sys import modules
 from typing import Any, Iterable, Iterator, Sequence, TypeVar
@@ -242,3 +241,11 @@ def inherit_docs(obj: T) -> T:
     Python 3.5+ already does this, but pydocstyle needs a static hint.
     """
     return obj
+
+
+def wrap_text(text: str, width: int, indent: str = "") -> str:
+    """Wraps the text with line breaks to be at most `width` wide indenting each line beyond the first with `indent`."""
+    out = text[:width]
+    for i in range(width, len(text), width - len(indent)):
+        out += f"\n{indent}{text[i : i + width - len(indent)]}"
+    return out

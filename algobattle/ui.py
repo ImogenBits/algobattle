@@ -5,13 +5,11 @@ import logging
 from logging.handlers import MemoryHandler
 from math import ceil
 from sys import stdout
-from typing import Any, Callable, Mapping, TypeVar, overload
+from typing import Any, Callable, Mapping, TypeVar
 from collections import deque
 
-from algobattle import __version__ as version
 from algobattle.events import SharedObserver, Subject
-from algobattle.match import MatchResult
-from algobattle.util import Table, inherit_docs, intersperse
+from algobattle.util import Table, inherit_docs, intersperse, wrap_text
 
 
 logger = logging.getLogger("algobattle.ui")
@@ -99,9 +97,9 @@ def _format_obj(obj: Table | Mapping | str | None, max_width: int = 10000, max_h
     if isinstance(obj, Table):
         return _format_table(obj, max_width, max_height)
     elif isinstance(obj, Mapping):
-        return [f"{key}: {val}" for key, val in obj.items()]
+        return [wrap_text(f"{key}: {val}", max_width, " " * (len(key) + 2)) for key, val in obj.items()]
     elif isinstance(obj, str):
-        return obj.split("\n")
+        return [wrap_text(line, max_width) for line in obj.split("\n")]
     elif obj is None:
         return []
 
@@ -160,7 +158,7 @@ class Ui(SharedObserver):
         free_space = rows - sum(len(i) for i in formatted.values()) - sum(1 for s in formatted.values() if s != [])
         formatted["match"] = self.sections["match"].format(cols, free_space).split("\n") + [""]
 
-        out = [line for section in formatted.values() for line in section][:rows]
+        out = [line for section in formatted.values() for line in section]
 
         if len(out) + 6 <= rows and 52 <= cols:
             logo = [

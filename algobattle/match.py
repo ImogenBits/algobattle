@@ -133,7 +133,7 @@ class MatchResult(dict[Matchup, list[BattleStyle.Result]]):
             table.add_row([matchup.generator, matchup.solver, *results, *padding, avg])
 
         return table
-    
+
     def __str__(self) -> str:
         return "\n".join(_format_table(self.data_table(), 10000, 10000))
 

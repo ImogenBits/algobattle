@@ -13,7 +13,7 @@ import algobattle
 from algobattle.match import Match
 from algobattle.util import get_matching_file, import_problem_from_path, NestedHelp
 from algobattle.docker import measure_runtime_overhead, DockerConfig
-from algobattle.ui import Ui, _format_table
+from algobattle.ui import Ui
 from algobattle.battle_styles import battle_styles, get_battle_style
 
 
