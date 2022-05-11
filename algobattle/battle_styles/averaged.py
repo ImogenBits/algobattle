@@ -70,7 +70,7 @@ class Averaged(BattleStyle):
         )
         for i in range(self.iterations):
             logger.info(f"=============== Iteration: {i + 1}/{self.iterations} ===============")
-            self.notify({"Iteration results": ', '.join(str(x) for x in res.approx_ratios)})
+            self.notify({"Iteration results": ', '.join(f"{x:.0%}" for x in res.approx_ratios)})
             approx_ratio = self.fight(matchup, instance_size=self.instance_size)
             res.approx_ratios.append(approx_ratio)
         return res
