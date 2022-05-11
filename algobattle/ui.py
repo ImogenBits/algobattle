@@ -8,7 +8,7 @@ from sys import stdout
 from typing import Any, Callable, Mapping, TypeVar
 from collections import deque
 
-from algobattle.events import SharedObserver, Subject
+from algobattle.events import SharedData, SharedObserver, Subject
 from algobattle.util import Table, inherit_docs, intersperse, wrap_text
 
 
@@ -122,7 +122,7 @@ class Ui(SharedObserver):
             self.stdscr.keypad(True)
             handler = BufferHandler(self, logging_level, num_records)
             logger.addHandler(handler)
-            self.sections: dict[str, Any] = {
+            self.sections: dict[str, SharedData] = {
                 "systeminfo": None,
                 "match": None,
                 "battle": None,
@@ -140,7 +140,7 @@ class Ui(SharedObserver):
             curses.endwin()  # type: ignore
 
     @check_for_terminal
-    def update(self, section: str, data: Any) -> None:
+    def update(self, section: str, data: SharedData) -> None:
         """Updates the specified section of the UI."""
         if section not in self.sections:
             return
@@ -156,7 +156,7 @@ class Ui(SharedObserver):
         formatted["logs"] = [f"╔{'logs':═^cols - 2}╗"] + ["║" + line + "║" for line in logs] + ["╚" + "═" * (cols - 2) + "╝"]
 
         free_space = rows - sum(len(i) for i in formatted.values()) - sum(1 for s in formatted.values() if s != [])
-        formatted["match"] = self.sections["match"].format(cols, free_space).split("\n") + [""]
+        formatted["match"] = _format_obj(self.sections["match"], cols, free_space)
 
         out = [line for section in formatted.values() for line in section]
 
