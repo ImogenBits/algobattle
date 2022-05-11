@@ -42,7 +42,7 @@ def _format_table(table: Table, max_width: int, max_height: int) -> list[str]:
     border = 4 + table.num_rows <= max_height
     horizontal_header_sep = 2 + table.num_rows <= max_height
 
-    # similar process for vertical space. here the only unnessecary space is the blank space around the seperating
+    # similar process for horizontal space. here the only unnessecary space is the blank space around the seperating
     # lines, so if that isn't enough we have to drop data right away.
     # the columns will all be the width of its longest entry, but data columns are at least 5 wide.
     # this gives us enough space to always format and align the results nicely.
@@ -53,12 +53,15 @@ def _format_table(table: Table, max_width: int, max_height: int) -> list[str]:
         vertical_sep_width = 3
     else:
         vertical_sep_width = 1
-    unused_width = max_width - 2 * ceil(vertical_sep_width / 2) + vertical_sep_width
+    # the first col doesn't add one normal sep but the two ending ones, which are one longer in total
+    used_width = 1
     num_cols = len(col_widths)
     for i, width in enumerate(col_widths):
-        unused_width -= width + vertical_sep_width
-        if unused_width < 0:
+        used_width += width + vertical_sep_width
+        if used_width > max_width:
             num_cols = i
+            break
+
     data = [row[:num_cols] for row in data]
     col_widths = col_widths[:num_cols]
 
@@ -99,18 +102,14 @@ def _format_obj(obj: SharedData, max_width: int = 10000, max_height: int = 10000
     elif isinstance(obj, Mapping):
         return [wrap_text(f"{key}: {val}", max_width, " " * (len(key) + 2)) for key, val in obj.items()]
     elif isinstance(obj, str):
-        return [wrap_text(line, max_width) for line in obj.split("\n")]
+        out = [wrap_text(line, max_width).split("\n") for line in obj.split("\n")]
+        return [line for sublist in out for line in sublist]
     elif obj is None:
         return []
 
 
 class Ui(SharedObserver):
     """The UI Class declares methods to output information to STDOUT."""
-
-    titles = {
-        "match": "",
-        "battle": "Current battle info:\n",
-    }
 
     @check_for_terminal
     def __init__(self, logger: logging.Logger, logging_level: int = logging.NOTSET, num_records: int = 10) -> None:
@@ -155,7 +154,7 @@ class Ui(SharedObserver):
         logs = _format_obj(self.sections["logs"], max_width=cols - 2)
         formatted["logs"] = (
             ["╔" + " logs ".center(cols - 2, "═") + "╗"]
-            + ["║" + line + "║" for line in logs]
+            + ["║" + line + " " * (cols - 2 - len(line)) + "║" for line in logs]
             + ["╚" + "═" * (cols - 2) + "╝"]
         )
 
