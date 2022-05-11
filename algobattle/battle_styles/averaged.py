@@ -70,7 +70,7 @@ class Averaged(BattleStyle):
         )
         for i in range(self.iterations):
             logger.info(f"=============== Iteration: {i + 1}/{self.iterations} ===============")
-            self.notify({"Iteration results": ', '.join(res.fmt_score(x) for x in res.approx_ratios)})
+            self.notify({"Iteration results": ', '.join(str(x) for x in res.approx_ratios)})
             approx_ratio = self.fight(matchup, instance_size=self.instance_size)
             res.approx_ratios.append(approx_ratio)
         return res
@@ -99,9 +99,5 @@ class Averaged(BattleStyle):
                 return cls([average])
 
         @inherit_docs
-        @staticmethod
-        def fmt_score(score: float) -> str:
-            if 0 <= score <= 10:
-                return f"{score: >5.0%}"
-            else:
-                return f"{score: >3.1}"
+        def __str__(self) -> str:
+            return f"{self.score:.0%}"

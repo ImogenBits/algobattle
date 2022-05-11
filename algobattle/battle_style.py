@@ -122,14 +122,7 @@ class BattleStyle(SharedSubject, ABC):
             """Constructs a result representing an average battle."""
             raise NotImplementedError
 
-        def __str__(self) -> str:
-            return format(self)
-
-        def __format__(self, formatspec: str) -> str:
-            return format(self.fmt_score(self.score), formatspec)
-
-        @staticmethod
         @abstractmethod
-        def fmt_score(score: float) -> str:
+        def __str__(self) -> str:
             """Formats a given score nicely."""
             raise NotImplementedError

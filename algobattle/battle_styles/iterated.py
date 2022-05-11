@@ -143,6 +143,5 @@ class Iterated(BattleStyle):
                 return cls(0, avg, 0)
 
         @inherit_docs
-        @staticmethod
-        def fmt_score(score: float) -> str:
-            return f"{int(score): >5}"
+        def __str__(self) -> str:
+            return str(self.solved)
