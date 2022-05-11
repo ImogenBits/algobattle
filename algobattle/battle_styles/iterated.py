@@ -3,6 +3,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import logging
+from typing import Iterator
 
 from algobattle.battle_style import BattleStyle
 from algobattle.problem import Problem
@@ -131,6 +132,15 @@ class Iterated(BattleStyle):
         @property
         def score(self) -> float:
             return self.solved
+
+        @inherit_docs
+        @classmethod
+        def average(cls, results: list[Iterated.Result]) -> Iterated.Result:
+            if len(results) == 0:
+                return cls()
+            else:
+                avg = sum(res.solved for res in results) // len(results)
+                return cls(0, avg, 0)
 
         @inherit_docs
         @staticmethod

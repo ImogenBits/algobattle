@@ -2,7 +2,7 @@
 from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Type
+from typing import Any, Type, TypeVar
 from inspect import isabstract, signature, getdoc
 from algobattle.events import SharedSubject
 from algobattle.fight import Fight
@@ -114,6 +114,12 @@ class BattleStyle(SharedSubject, ABC):
         @abstractmethod
         def score(self) -> float:
             """The score of this result."""
+            raise NotImplementedError
+
+        @classmethod
+        @abstractmethod
+        def average(cls, results: list[BattleStyle.Result]) -> BattleStyle.Result:
+            """Constructs a result representing an average battle."""
             raise NotImplementedError
 
         def __str__(self) -> str:

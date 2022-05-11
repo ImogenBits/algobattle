@@ -90,6 +90,15 @@ class Averaged(BattleStyle):
                 return sum(self.approx_ratios) / len(self.approx_ratios)
 
         @inherit_docs
+        @classmethod
+        def average(cls, results: list[Averaged.Result]) -> Averaged.Result:
+            if len(results) == 0:
+                return cls()
+            else:
+                average = sum(res.score for res in results) / len(results)
+                return cls([average])
+
+        @inherit_docs
         @staticmethod
         def fmt_score(score: float) -> str:
             if 0 <= score <= 10:

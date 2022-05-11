@@ -129,7 +129,7 @@ class MatchResult(dict[Matchup, list[BattleStyle.Result]]):
             if len(results) == 0:
                 avg = ""
             else:
-                avg = results[0].fmt_score(sum(r.score for r in results) / len(results))
+                avg = results[0].average(results)
             table.add_row([matchup.generator, matchup.solver, *results, *padding, avg])
 
         return table
