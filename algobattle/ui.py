@@ -8,7 +8,7 @@ from typing import Callable, Mapping, TypeVar
 from collections import deque
 
 from algobattle.events import SharedData, SharedObserver, Subject
-from algobattle.util import Table, inherit_docs, intersperse, wrap_text
+from algobattle.util import Table, inherit_docs, intersperse, replace_nth, wrap_text
 
 
 logger = logging.getLogger("algobattle.ui")
@@ -72,7 +72,9 @@ def _format_table(table: Table, max_width: int, max_height: int) -> list[str]:
     border_sep_padding = "{sep}" * (vertical_sep_width // 2)
     vertical_sep_fmt = border_sep_padding + "{middle}" + border_sep_padding
     horizontal_sep_fmt = vertical_sep_fmt.join("{sep}" * width for width in col_widths)
+    horizontal_sep_fmt = replace_nth(horizontal_sep_fmt, "{middle}", "{middle_heavy}", table.num_header_cols)
     data_fmt = vertical_sep_fmt.join(f"{{: ^{width}}}" for width in col_widths)
+    data_fmt = replace_nth(data_fmt, "{middle}", "{middle_heavy}", table.num_header_cols)
     if border:
         horizontal_sep_fmt = "{start}" + border_sep_padding + horizontal_sep_fmt + border_sep_padding + "{end}"
         data_fmt = "{start}" + border_sep_padding + data_fmt + border_sep_padding + "{end}"
@@ -81,16 +83,16 @@ def _format_table(table: Table, max_width: int, max_height: int) -> list[str]:
     # ASCII line art so that they all connect nicely. start, middle, and end are for pipe like characters that have the
     # right connection to their surroundings, sep is the filler character used to make long horizontal lines
     out = []
-    out.append(data_fmt.format(*table.column_names, start="║", middle="║", end="║", sep=" "))
+    out.append(data_fmt.format(*table.column_names, start="║", middle="│", middle_heavy="║", end="║", sep=" "))
     if horizontal_header_sep:
-        out.append(horizontal_sep_fmt.format(start="╠", middle="╬", end="╣", sep="═"))
-    data = [data_fmt.format(*row, start="║", middle="║", end="║", sep=" ") for row in data]
+        out.append(horizontal_sep_fmt.format(start="╠", middle="╪", middle_heavy="╬", end="╣", sep="═"))
+    data = [data_fmt.format(*row, start="║", middle="│", middle_heavy="║", end="║", sep=" ") for row in data]
     if horizontal_data_seps:
-        data = intersperse(horizontal_sep_fmt.format(start="╟", middle="╫", end="╢", sep="─"), data)
+        data = intersperse(horizontal_sep_fmt.format(start="╟", middle="┼", middle_heavy="╫", end="╢", sep="─"), data)
     out += data
     if border:
-        out.insert(0, horizontal_sep_fmt.format(start="╔", middle="╦", end="╗", sep="═"))
-        out.append(horizontal_sep_fmt.format(start="╚", middle="╩", end="╝", sep="═"))
+        out.insert(0, horizontal_sep_fmt.format(start="╔", middle="╤", middle_heavy="╦", end="╗", sep="═"))
+        out.append(horizontal_sep_fmt.format(start="╚", middle="╧", middle_heavy="╩", end="╝", sep="═"))
 
     return out
 

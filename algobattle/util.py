@@ -118,6 +118,8 @@ class Table:
     """Stores data in a 2D table."""
 
     def __init__(self, column_names: list[str], num_header_cols: int = 0) -> None:
+        if num_header_cols > len(column_names):
+            raise ValueError
         self.num_header_cols = num_header_cols
         self.column_names = column_names[:]
         self._data = []
@@ -249,3 +251,19 @@ def wrap_text(text: str, width: int, indent: str = "") -> str:
     for i in range(width, len(text), width - len(indent)):
         out += f"\n{indent}{text[i : i + width - len(indent)]}"
     return out
+
+
+def replace_nth(string: str, substr: str, replace: str, n: int) -> str:
+    """Replaces the `n`th occurence of `substr` in `string` with `replace`."""
+    pos = -1
+    for _ in range(n):
+        new_pos = string.find(substr, pos + 1)
+        if new_pos == -1:
+            break
+        pos = new_pos
+    if pos == -1:
+        return string
+    else:
+        before = string[:pos]
+        after = string[pos + len(substr):]
+        return before + replace + after

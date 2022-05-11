@@ -122,7 +122,7 @@ class MatchResult(dict[Matchup, list[BattleStyle.Result]]):
 
         The columns are the matchup teams, then the round results, and then the average round result.
         """
-        table = Table(["GEN", "SOL", *(str(i) for i in range(1, self.rounds + 1)), "AVG"])
+        table = Table(["GEN", "SOL", *(str(i) for i in range(1, self.rounds + 1)), "AVG"], 2)
 
         for matchup, results in self.items():
             padding = [""] * (self.rounds - len(results))
