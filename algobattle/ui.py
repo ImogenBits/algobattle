@@ -168,7 +168,7 @@ class Ui(SharedObserver):
                 out += val + [""]
         out = out[:-1]
 
-        if len(out) + 6 <= rows and 52 <= cols:
+        if len(out) + 7 <= rows and 52 <= cols:
             logo = [
                 r"     _    _             _           _   _   _       ",
                 r"    / \  | | __ _  ___ | |__   __ _| |_| |_| | ___  ",
@@ -176,6 +176,7 @@ class Ui(SharedObserver):
                 r"  / ___ \| | (_| | (_) | |_) | (_| | |_| |_| |  __/ ",
                 r" /_/   \_\_|\__, |\___/|_.__/ \__,_|\__|\__|_|\___| ",
                 r"             |___/                                  ",
+                r"                                                    ",
             ]
             out = [line.center(cols) for line in logo] + out
         elif len(out) + 1 <= rows and 10 <= cols:
