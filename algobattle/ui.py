@@ -139,8 +139,8 @@ class Ui(UiObserver):
             }
 
     @check_for_terminal
-    def restore(self) -> None:
-        """Restore the console. This will be later moved into a proper deconstruction method."""
+    def cleanup(self) -> None:
+        """Restore the console."""
         if stdout.isatty():
             curses.nocbreak()  # type: ignore
             self.stdscr.keypad(False)
