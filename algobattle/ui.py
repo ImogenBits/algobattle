@@ -7,7 +7,7 @@ from sys import stdout
 from typing import Callable, Mapping, TypeVar
 from collections import deque
 
-from algobattle.events import SharedData, SharedObserver, Subject
+from algobattle.events import UiData, UiObserver, Subject
 from algobattle.util import Table, inherit_docs, intersperse, replace_nth, wrap_text
 
 
@@ -101,7 +101,7 @@ def _format_table(table: Table, max_width: int, max_height: int) -> list[str]:
     return out
 
 
-def _format_obj(obj: SharedData, max_width: int = 10000, max_height: int = 10000) -> list[str]:
+def _format_obj(obj: UiData, max_width: int = 10000, max_height: int = 10000) -> list[str]:
     if isinstance(obj, Table):
         return _format_table(obj, max_width, max_height)
     elif isinstance(obj, Mapping):
@@ -113,7 +113,7 @@ def _format_obj(obj: SharedData, max_width: int = 10000, max_height: int = 10000
         return []
 
 
-class Ui(SharedObserver):
+class Ui(UiObserver):
     """The UI Class declares methods to output information to STDOUT."""
 
     @check_for_terminal
@@ -126,7 +126,7 @@ class Ui(SharedObserver):
             self.stdscr.keypad(True)
             handler = BufferHandler(self, logging_level, num_records)
             logger.addHandler(handler)
-            self.sections: dict[str, SharedData] = {
+            self.sections: dict[str, UiData] = {
                 "systeminfo": None,
                 "match": None,
                 "battle": None,
@@ -144,7 +144,7 @@ class Ui(SharedObserver):
             curses.endwin()  # type: ignore
 
     @check_for_terminal
-    def update(self, section: str, data: SharedData) -> None:
+    def update(self, section: str, data: UiData) -> None:
         """Updates the specified section of the UI."""
         if section not in self.sections:
             return

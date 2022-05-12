@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Type
 
 from algobattle.battle_style import BattleStyle
-from algobattle.events import SharedSubject
+from algobattle.events import UiSubject
 from algobattle.fight import Fight
 from algobattle.team import Team, MatchupInfo, Matchup
 from algobattle.problem import Problem
@@ -20,7 +20,7 @@ from algobattle.ui import _format_table
 logger = logging.getLogger("algobattle.match")
 
 
-class Match(SharedSubject):
+class Match(UiSubject):
     """Match class, provides functionality for setting up and executing battles between given teams."""
 
     default_event = "match"

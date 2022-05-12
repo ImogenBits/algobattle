@@ -2,9 +2,9 @@
 from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Type, TypeVar
+from typing import Any, Type
 from inspect import isabstract, signature, getdoc
-from algobattle.events import SharedSubject
+from algobattle.events import UiSubject
 from algobattle.fight import Fight
 
 from algobattle.problem import Problem
@@ -14,7 +14,7 @@ from algobattle.util import parse_doc_for_param
 logger = logging.getLogger("algobattle.battle_type")
 
 
-class BattleStyle(SharedSubject, ABC):
+class BattleStyle(UiSubject, ABC):
     """Base class for battle styles that define how a battle can be structured.
 
     All battle styles should inherit from this class explicitly so they are integrated into the match structure properly.

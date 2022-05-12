@@ -15,6 +15,7 @@ from algobattle.util import get_matching_file, import_problem_from_path, NestedH
 from algobattle.docker import measure_runtime_overhead, DockerConfig
 from algobattle.ui import Ui
 from algobattle.battle_styles import battle_styles, get_battle_style
+from algobattle.events import ui_dispatcher
 
 
 def setup_logging(logging_path: Path, verbose_logging: bool, silent: bool):
@@ -291,10 +292,8 @@ if __name__ == "__main__":  # noqa: C901
 
         if options.display == "ui":
             ui = Ui(logger, logger.getEffectiveLevel())
-            ui.update("systeminfo", "Setting up match...")
-        else:
-            ui = None
 
+        ui_dispatcher.notify("Setting up match...")
         if not options.no_overhead_calculation:
             logger.info("Running a benchmark to determine your machines I/O overhead to start and stop docker containers...")
             runtime_overhead = measure_runtime_overhead()
@@ -306,12 +305,11 @@ if __name__ == "__main__":  # noqa: C901
 
         team_info = parse_team_info(options.teams)
         match = Match(problem, config.docker_config, team_info)
-        if ui is not None:
-            ui.update("systeminfo", None)
+        ui_dispatcher.notify(None)
+
         results = match.run(**vars(config))
 
-        if ui is not None:
-            ui.restore()
+        ui_dispatcher.cleanup()
 
         logger.info("#" * 78 + "\n")
         logger.info(str(results))

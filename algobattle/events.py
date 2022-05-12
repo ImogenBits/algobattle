@@ -51,32 +51,42 @@ class Subject(ABC, Generic[T]):
             pass
 
 
-SharedData = Union[Table, Mapping, str, None]
+UiData = Union[Table, Mapping, str, None]
 
 
-class _Dispatcher(Observer[SharedData], Subject[SharedData]):
+class _UiDispatcher(Observer[UiData], Subject[UiData]):
     """Singleton class that handles the shared subject/observer objects."""
 
-    default_event = ""
+    default_event = "systeminfo"
+    observers: list[UiObserver]
 
-    def update(self, event: str, data: SharedData) -> None:
+    def update(self, event: str, data: UiData) -> None:
         self.notify(data, event)
 
-
-_dispatcher = _Dispatcher()
-
-
-class SharedObserver(Observer[SharedData], ABC):
-    """An `Observer` that will receive updates from any `SharedSubject`."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        _dispatcher.attach(self)
+    def cleanup(self) -> None:
+        for observer in self.observers:
+            observer.cleanup()
+        self.observers = []
 
 
-class SharedSubject(Subject[SharedData], ABC):
-    """A `Subject` that will update all `SharedObserver`s."""
+ui_dispatcher = _UiDispatcher()
+
+
+class UiObserver(Observer[UiData], ABC):
+    """An `Observer` that will receive updates from any `UiSubject`."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.attach(_dispatcher)
+        ui_dispatcher.attach(self)
+
+    def cleanup(self) -> None:
+        """Cleans up the ui state."""
+        pass
+
+
+class UiSubject(Subject[UiData], ABC):
+    """A `Subject` that will update all `UiObserver`s."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.attach(ui_dispatcher)
