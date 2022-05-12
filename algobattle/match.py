@@ -90,9 +90,12 @@ class Match(UiSubject):
 
         self.notify(results.data_table())
 
-        for matchup in self.battle_matchups:
-            for i in range(rounds):
-                logger.info(f'{"#" * 20}  Running Battle {i + 1}/{rounds}  {"#" * 20}')
+        for i, matchup in enumerate(self.battle_matchups):
+            for j in range(rounds):
+                logger.info(f'{"#" * 20}  Running Battle {j + 1}/{rounds}  {"#" * 20}')
+                in_progress = results.data_table()
+                in_progress[i, j + in_progress.num_header_cols] = "⋯"
+                self.notify(in_progress)
                 result = battle.run(matchup)
                 results[matchup].append(result)
                 self.notify(results.data_table())

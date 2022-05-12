@@ -122,7 +122,7 @@ class Table:
             raise ValueError
         self.num_header_cols = num_header_cols
         self.column_names = column_names[:]
-        self._data = []
+        self._data: list[list[Any]] = []
 
     def add_row(self, row: Sequence) -> None:
         """Adds a new row to the table. Raises `ValueError` if it has an incompatible length."""
@@ -149,6 +149,18 @@ class Table:
     def num_cols(self) -> int:
         """Number of columns in the table."""
         return len(self.column_names)
+
+    def __getitem__(self, key: tuple[int, int]) -> Any:
+        row, col = key
+        if row >= self.num_rows or col >= self.num_cols:
+            raise IndexError
+        return self._data[row][col]
+
+    def __setitem__(self, key: tuple[int, int], val: Any) -> None:
+        row, col = key
+        if row >= self.num_rows or col >= self.num_cols:
+            raise IndexError
+        self._data[row][col] = val
 
 
 # this should probably be done with a library
@@ -265,5 +277,5 @@ def replace_nth(string: str, substr: str, replace: str, n: int) -> str:
         return string
     else:
         before = string[:pos]
-        after = string[pos + len(substr):]
+        after = string[pos + len(substr) :]
         return before + replace + after
