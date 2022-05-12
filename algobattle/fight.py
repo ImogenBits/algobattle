@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Generic, TypeVar
 from logging import getLogger
 from algobattle.docker import DockerConfig, DockerError
+from algobattle.events import UiSubject
 from algobattle.problem import Problem
 from algobattle.team import Team, Matchup
 
@@ -14,11 +15,15 @@ Solution = TypeVar("Solution")
 
 
 @dataclass
-class Fight(Generic[Instance, Solution]):
+class Fight(UiSubject, Generic[Instance, Solution]):
     """Class that executes a single fight with a given matchup."""
 
     problem: Problem[Instance, Solution]
     docker_config: DockerConfig
+    default_event = "fight"
+
+    def __post_init__(self) -> None:
+        super().__init__()
 
     def __call__(self, matchup: Matchup, instance_size: int) -> float:
         """Execute a fight of a battle between a given generator and solver for a given instance size.
@@ -37,11 +42,13 @@ class Fight(Generic[Instance, Solution]):
             the generator (1 if optimal, 0 if failed, <=1 if the
             generator solution is optimal).
         """
+        self.notify("Generating instance")
         try:
             instance, generator_solution = self._run_generator(matchup.generator, instance_size)
         except ValueError:
             return self.problem.approx_cap
 
+        self.notify("Running solver")
         try:
             solver_solution = self._run_solver(matchup.solver, instance_size, instance)
         except ValueError:
