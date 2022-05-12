@@ -52,7 +52,6 @@ class TableTests(TestCase):
         self.check_basic_format(formatted, 10000, 3)
 
 
-
 class UiTests(TestCase):
     """Tests for other ui module functions."""
 
@@ -66,7 +65,7 @@ class UiTests(TestCase):
         for line in mapping_formatted:
             self.assertLessEqual(len(line), 50)
         self.assertEqual(len(mapping_formatted), 5)
-        self.assertEqual(mapping_formatted[3][:7], " " * 7)
+        self.assertEqual(mapping_formatted[3][:3], "   ")
 
     def test_format_obj_string(self):
         string_formatted = _format_obj("test" * 50, 16, 5)

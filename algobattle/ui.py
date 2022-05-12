@@ -105,7 +105,11 @@ def _format_obj(obj: UiData, max_width: int = 10000, max_height: int = 10000) ->
     if isinstance(obj, Table):
         return _format_table(obj, max_width, max_height)
     elif isinstance(obj, Mapping):
-        return [wrap_text(f"{key}: {val}", max_width, " " * (len(str(key)) + 2)) for key, val in obj.items()][:max_height]
+        formatted = []
+        for key, val in obj.items():
+            text = wrap_text(f"{key}: {val}", max_width, " " * (len(str(key)) + 2))
+            formatted += text.split("\n")
+        return formatted[:max_height]
     elif isinstance(obj, str):
         out = [wrap_text(line, max_width).split("\n") for line in obj.split("\n")]
         return [line for sublist in out for line in sublist][:max_height]
