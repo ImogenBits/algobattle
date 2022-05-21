@@ -71,42 +71,6 @@ def initialize_wrapper(wrapper_name: str, config: ConfigParser):
         return None
 
 
-def measure_runtime_overhead() -> float:
-    """Calculate the I/O delay for starting and stopping docker on the host machine.
-
-    Returns
-    -------
-    float
-        I/O overhead in seconds, rounded to two decimal places.
-    """
-    problem = DelaytestProblem.Problem()
-    config = ConfigParser()
-    config.read(Path(Path(algobattle.__file__).parent, 'config', 'config_delaytest.ini'))
-    delaytest_path = Path(Path(DelaytestProblem.__file__).parent, 'generator')
-    build_successful = build_docker_container(delaytest_path,
-                                              'runtime-checker',
-                                              timeout_build=int(config['run_parameters']['timeout_build']))
-
-    if not build_successful:
-        logger.warning('Building a match for the time tolerance calculation failed!')
-        return 0
-
-    fight_handler = algobattle.fight_handler.FightHandler(problem, config)
-
-    overheads = []
-    for i in range(5):
-        sigh.latest_running_docker_image = 'runtime-checker'
-        _, timeout = run_subprocess(fight_handler.base_run_command(fight_handler.space_generator) + ['runtime-checker'],
-                                    input=str(50 * i).encode(), timeout=fight_handler.timeout_generator)
-        if not timeout:
-            timeout = fight_handler.timeout_generator
-        overheads.append(float(timeout))
-
-    max_overhead = round(max(overheads), 2)
-
-    return max_overhead
-
-
 def run_subprocess(run_command: list, input: bytes, timeout: float, suppress_output: bool = False) -> Tuple:
     """Run a given command as a subprocess.
 
