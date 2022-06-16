@@ -4,7 +4,6 @@ from configparser import ConfigParser
 from typing import Callable, Tuple
 from algobattle.docker import DockerError
 
-import algobattle.sighandler as sigh
 from algobattle.team import Team
 from algobattle.problem import Problem
 
