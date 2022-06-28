@@ -120,6 +120,10 @@ if __name__ == "__main__":
         if len(solvers) != len(generators) or len(solvers) != len(team_names) or len(team_names) != len(generators):
             sys.exit('The number of provided generator paths ({}), solver paths ({}) and group numbers ({}) is not equal!'.format(len(generators), len(solvers), len(team_names)))
 
+        problem_path = Path(problem_path)
+        options.config = Path(options.config)
+        solvers = [Path(s) for s in solvers]
+        generators = [Path(g) for g in generators]
         _exit_if_path_nonexistent(problem_path)
         _exit_if_path_nonexistent(options.config)
         for solver_path in solvers:
@@ -139,7 +143,7 @@ if __name__ == "__main__":
         config = ConfigParser()
         config.read(options.config)
 
-        teams = []
+        teams: list[Team] = []
         for name, generator, solver in zip(team_names, generators, solvers):
             try:
                 teams.append(Team(name, generator, solver, float(config["run_parameters"]["timeout_build"])))
