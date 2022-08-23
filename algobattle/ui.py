@@ -3,10 +3,10 @@ import curses
 import logging
 from sys import stdout
 from typing import Callable, TypeVar
+from importlib.metadata import version as pkg_version
 
 from algobattle.observer import Observer
 from algobattle.match import Match
-from algobattle import __version__ as version
 
 logger = logging.getLogger('algobattle.ui')
 
@@ -75,6 +75,6 @@ class Ui(Observer):
               + r'          /_/   \_\_|\__, |\___/|_.__/ \__,_|\__|\__|_|\___| ' + '\n\r' \
               + r'                      |___/                                  ' + '\n\r'
 
-        out += '\nAlgobattle version {}\n\r'.format(version)
+        out += '\nAlgobattle version {}\n\r'.format(pkg_version(__package__))
 
         print(out + match.format_match_data_as_utf8())

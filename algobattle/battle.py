@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Main battle script. Executes all possible types of battles, see battle --help for all options."""
 import sys
 import os
@@ -8,6 +7,7 @@ import datetime as dt
 from optparse import OptionParser
 from pathlib import Path
 from configparser import ConfigParser
+from importlib.metadata import version as pkg_version
 
 import algobattle
 from algobattle.fight_handler import FightHandler
@@ -80,7 +80,7 @@ def _exit_if_path_nonexistent(path: Path):
         sys.exit('Path "{}" does not exist in the file system! Use "battle --help" for more information on usage and options.'.format(path))
 
 
-if __name__ == "__main__":
+def main():
     try:
         if len(sys.argv) < 2:
             sys.exit('Expecting (relative) path to the parent directory of a problem file as argument. Use "battle --help" for more information on usage and options.')
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
         # Option parser to process arguments from the console.
         usage = 'usage: %prog FILE [options]\nExpecting (relative) path to the directory of the problem as first argument.\nIf you provide generators, solvers and group numbers for multiple teams, make sure that the order is the same for all three arguments.'
-        parser = OptionParser(usage=usage, version=algobattle.__version__)
+        parser = OptionParser(usage=usage, version=pkg_version(__package__))
         parser.add_option('--verbose', dest='verbose_logging', action='store_true', help='Log all debug messages.')
         parser.add_option('--logging_path', dest='logging_path', default=default_logging_path, help='Specify the folder into which the log file is written to. Can either be a relative or absolute path to folder. If nonexisting, a new folder will be created. Default: ~/.algobattle_logs/')
         parser.add_option('--config_file', dest='config', default=default_config_file, help='Path to a .ini configuration file to be used for the run. Defaults to the packages config.ini')
