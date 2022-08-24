@@ -183,3 +183,6 @@ def main():
             logger.critical("Received keyboard interrupt, terminating execution.")  # type: ignore
         except NameError:
             raise SystemExit("Received keyboard interrupt, terminating execution.")
+
+if __name__ == "__main__":
+    main()
