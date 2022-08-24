@@ -24,16 +24,15 @@ We recommend installing the package as a user using `pip`
 ```
 pip install . --user
 ```
+When installing the package on windows, specify the `windows` optional dependencies
+```
+pip install .[windows] --user
+```
 
 Adjust the parameters set in the `algobattle/configs/config.ini` file to set
 which hardware resources you want to assign. You can pass alternative
 configuration files to the script using the `--config_file` option.
 
-This program requires the `curses` module which is available by default on Linux
-and can be manually installed on windows, e.g. with
-```
-pip install windows-curses
-```
 
 # Usage
 This repository does not include any practical problems. For a selection of problems
