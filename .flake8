@@ -9,10 +9,12 @@ per_file_ignores =
     */problems/*/problem.py: D102
     tests/*: D102
     tests/__init__.py: D104
+    battle.py: E501
 docstring_convention = numpy
 ignore = D105, D401, E203, E302
 exclude =
     .git,
     __pycache__,
-    algobattle/old_problem.py
+    algobattle/old_problem.py,
+    algobattle/problems/*
 ignore_decorators=inherit_docs

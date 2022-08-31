@@ -21,7 +21,7 @@ from algobattle.docker_wrapper import DockerError
 def setup_logging(logging_path: Path, verbose_logging: bool, silent: bool):
     """Creates and returns a parent logger.
 
-    Parameters:
+    Parameters
     ----------
     logging_path : Path
         Path to folder where the logfile should be stored at.
@@ -30,9 +30,9 @@ def setup_logging(logging_path: Path, verbose_logging: bool, silent: bool):
     silent : bool
         Flag indicating whether not to pipe the logging output to stderr.
 
-    Returns:
-    ----------
-    Logger:
+    Returns
+    -------
+    logger:
         The Logger object.
     """
     common_logging_level = logging.INFO
@@ -81,6 +81,7 @@ def _exit_if_path_nonexistent(path: Path):
 
 
 def main():
+    """Entrypoint of `algobattle` CLI."""
     try:
         if len(sys.argv) < 2:
             sys.exit('Expecting (relative) path to the parent directory of a problem file as argument. Use "battle --help" for more information on usage and options.')
@@ -106,7 +107,7 @@ def main():
         parser.add_option('--silent', dest='silent', action='store_true', help='Disable forking the logging output to stderr.')
         parser.add_option('--ui', dest='display_ui', action='store_true', help='If set, the program sets the --silent option and displays a small ui on STDOUT that shows the progress of the battles.')
 
-        (options, args) = parser.parse_args()
+        (options, _args) = parser.parse_args()
 
         display_ui = options.display_ui
         if display_ui:
@@ -158,7 +159,7 @@ def main():
             ui = Ui()
             match.attach(ui)
 
-        results = match.run()
+        match.run()
 
         if display_ui:
             match.detach(ui)
@@ -176,6 +177,7 @@ def main():
             logger.critical("Received keyboard interrupt, terminating execution.")  # type: ignore
         except NameError:
             raise SystemExit("Received keyboard interrupt, terminating execution.")
+
 
 if __name__ == "__main__":
     main()
