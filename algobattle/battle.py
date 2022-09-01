@@ -42,17 +42,15 @@ def setup_logging(logging_path: Path, verbose_logging: bool, silent: bool):
 
     Path(logging_path).mkdir(exist_ok=True)
 
-    _now = dt.datetime.now()
-
-    time_seperator = ':' if os.name == 'posix' else '-'
-    current_timestamp = '{:04d}-{:02d}-{:02d}_{:02d}{}{:02d}{}{:02d}'.format(_now.year, _now.month, _now.day, _now.hour, time_seperator, _now.minute, time_seperator, _now.second)
+    t = dt.datetime.now()
+    sep = ':' if os.name == 'posix' else '-'
+    current_timestamp = f"{t.year:04d}-{t.month:02d}-{t.day:02d}_{t.hour:02d}{sep}{t.minute:02d}{sep}{t.second:02d}"
     logging_path = Path(logging_path, current_timestamp + '.log')
 
     logging.basicConfig(handlers=[logging.FileHandler(logging_path, 'w', 'utf-8')],
                         level=common_logging_level,
                         format='%(asctime)s %(levelname)s: %(message)s',
                         datefmt='%H:%M:%S')
-
     logger = logging.getLogger('algobattle')
 
     if not silent:
@@ -64,20 +62,8 @@ def setup_logging(logging_path: Path, verbose_logging: bool, silent: bool):
 
         logger.addHandler(_consolehandler)
 
-    logger.info('You can find the log files for this run in {}'.format(logging_path))
+    logger.info(f"You can find the log files for this run in {logging_path}")
     return logger
-
-
-def _exit_if_path_nonexistent(path: Path):
-    """Check if a given path can be found in the os, exit otherwise.
-
-    Parameters
-    ----------
-    path : Path
-        The path to be checked for existence.
-    """
-    if not Path(path).exists():
-        sys.exit('Path "{}" does not exist in the file system! Use "battle --help" for more information on usage and options.'.format(path))
 
 
 def main():
@@ -86,10 +72,10 @@ def main():
         if len(sys.argv) < 2:
             sys.exit('Expecting (relative) path to the parent directory of a problem file as argument. Use "battle --help" for more information on usage and options.')
 
-        problem_path = str(Path(sys.argv[1]).resolve())
+        problem_path = Path(sys.argv[1]).resolve()
 
-        default_logging_path = Path(Path.home(), '.algobattle_logs')
-        default_config_file = Path(Path(algobattle.__file__).parent, 'config', 'config.ini')
+        default_logging_path = Path.home() / '.algobattle_logs'
+        default_config_file = Path(algobattle.__file__).parent / 'config' / 'config.ini'
 
         # Option parser to process arguments from the console.
         usage = 'usage: %prog FILE [options]\nExpecting (relative) path to the directory of the problem as first argument.\nIf you provide generators, solvers and group numbers for multiple teams, make sure that the order is the same for all three arguments.'
@@ -97,8 +83,8 @@ def main():
         parser.add_option('--verbose', dest='verbose_logging', action='store_true', help='Log all debug messages.')
         parser.add_option('--logging_path', dest='logging_path', default=default_logging_path, help='Specify the folder into which the log file is written to. Can either be a relative or absolute path to folder. If nonexisting, a new folder will be created. Default: ~/.algobattle_logs/')
         parser.add_option('--config_file', dest='config', default=default_config_file, help='Path to a .ini configuration file to be used for the run. Defaults to the packages config.ini')
-        parser.add_option('--solvers', dest='solvers', default=str(Path(problem_path, 'solver')), help='Specify the folder names containing the solvers of all involved teams as a comma-seperated list. Default: arg1/solver/')
-        parser.add_option('--generators', dest='generators', default=str(Path(problem_path, 'generator')), help='Specify the folder names containing the generators of all involved teams as a comma-seperated list. Default: arg1/generator/')
+        parser.add_option('--solvers', dest='solvers', default=str(problem_path / 'solver'), help='Specify the folder names containing the solvers of all involved teams as a comma-seperated list. Default: arg1/solver/')
+        parser.add_option('--generators', dest='generators', default=str(problem_path / 'generator'), help='Specify the folder names containing the generators of all involved teams as a comma-seperated list. Default: arg1/generator/')
         parser.add_option('--team_names', dest='team_names', default='0', help='Specify the team names of all involved teams as a list strings as a comma-seperated list. Default: "0"')
         parser.add_option('--rounds', dest='battle_rounds', type=int, default='5', help='Number of rounds that are to be fought in the battle (points are split between all rounds). Default: 5')
         parser.add_option('--battle_type', dest='battle_type', choices=['iterated', 'averaged'], default='iterated', help='Type of battle wrapper to be used. Possible options: iterated, averaged. Default: iterated')
@@ -107,35 +93,29 @@ def main():
         parser.add_option('--silent', dest='silent', action='store_true', help='Disable forking the logging output to stderr.')
         parser.add_option('--ui', dest='display_ui', action='store_true', help='If set, the program sets the --silent option and displays a small ui on STDOUT that shows the progress of the battles.')
 
-        (options, _args) = parser.parse_args()
+        options, _args = parser.parse_args()
 
         display_ui = options.display_ui
         if display_ui:
             options.silent = True
 
-        solvers = options.solvers.split(',')
-        generators = options.generators.split(',')
+        solvers = [Path(path) for path in options.solvers.split(',')]
+        generators = [Path(path) for path in options.generators.split(',')]
         team_names = options.team_names.split(',')
 
-        if len(solvers) != len(generators) or len(solvers) != len(team_names) or len(team_names) != len(generators):
-            sys.exit('The number of provided generator paths ({}), solver paths ({}) and group numbers ({}) is not equal!'.format(len(generators), len(solvers), len(team_names)))
+        if not (len(solvers) == len(generators) == len(team_names)):
+            raise SystemExit(f"The number of provided generator paths ({len(generators)}), solver paths ({len(solvers)}) and group numbers ({len(team_names)}) is not equal!")
 
-        problem_path = Path(problem_path)
-        options.config = Path(options.config)
-        solvers = [Path(s) for s in solvers]
-        generators = [Path(g) for g in generators]
-        _exit_if_path_nonexistent(problem_path)
-        _exit_if_path_nonexistent(options.config)
-        for solver_path in solvers:
-            _exit_if_path_nonexistent(solver_path)
-        for generator_path in generators:
-            _exit_if_path_nonexistent(generator_path)
+        for path in [problem_path, options.config] + solvers + generators:
+            if not path.exists():
+                raise SystemExit(f"Path '{path}' does not exist in the file system! "
+                                 "Use 'battle --help' for more information on usage and options.")
 
         logger = setup_logging(options.logging_path, options.verbose_logging, options.silent)
 
         problem = import_problem_from_path(problem_path)
         if not problem:
-            sys.exit(1)
+            raise SystemExit
 
         logger.debug('Options for this run: {}'.format(options))
         logger.debug('Contents of sys.argv: {}'.format(sys.argv))
