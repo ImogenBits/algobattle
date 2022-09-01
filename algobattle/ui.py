@@ -2,7 +2,7 @@
 import curses
 import logging
 from sys import stdout
-from typing import Callable, TypeVar
+from typing import Callable, ParamSpec, TypeVar
 from importlib.metadata import version as pkg_version
 
 from algobattle.observer import Observer
@@ -11,20 +11,19 @@ from algobattle.match import Match
 logger = logging.getLogger('algobattle.ui')
 
 
-F = TypeVar("F", bound=Callable)
-
-
-def check_for_terminal(function: F) -> F:
+P = ParamSpec("P")
+R = TypeVar("R")
+def check_for_terminal(function: Callable[P, R]) -> Callable[P, R | None]:
     """Ensure that we are attached to a terminal."""
 
-    def wrapper(self, *args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs):
         if not stdout.isatty():
             logger.error("Not attached to a terminal.")
             return None
         else:
-            return function(self, *args, **kwargs)
+            return function(*args, **kwargs)
 
-    return wrapper  # type: ignore
+    return wrapper
 
 
 class Ui(Observer):
