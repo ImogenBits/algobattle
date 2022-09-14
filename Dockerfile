@@ -7,4 +7,4 @@ COPY ../setup.py .
 COPY ../tests tests
 RUN pip install --no-cache-dir .
 
-ENTRYPOINT ["python", "-m", "unittest", "--failfast"]
+ENTRYPOINT ["python", "-Wignore", "-m", "unittest", "--failfast"]
