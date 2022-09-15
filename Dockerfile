@@ -7,4 +7,5 @@ COPY ../setup.py .
 COPY ../tests tests
 RUN pip install --no-cache-dir .
 
-ENTRYPOINT ["python", "-Wignore", "-m", "unittest", "--failfast"]
+CMD ["--help"]
+ENTRYPOINT ["algobattle"]
