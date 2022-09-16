@@ -25,5 +25,5 @@ dependencies = [
 [project.scripts]
 algobattle = "algobattle.battle:main"
 
-[tool.setuptools.packages.find]
-where = ["algobattle"]
+#[tool.setuptools.packages.find]
+#where = ["algobattle"]
