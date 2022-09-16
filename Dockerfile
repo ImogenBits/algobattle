@@ -3,8 +3,7 @@ FROM python:3.10
 WORKDIR /usr/src/algobattle
 COPY ../algobattle algobattle
 COPY ../pyproject.toml .
-COPY ../setup.py .
-COPY ../tests tests
+COPY MANIFEST.in .
 RUN pip install --no-cache-dir .
 
 CMD ["--help"]
