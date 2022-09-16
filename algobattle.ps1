@@ -18,10 +18,21 @@ function Force-Convert-Path {
     return $FileName
 }
 
-
 $mounts = New-Object System.Collections.Generic.List[System.Object]
-$algobattleArgs = New-Object System.Collections.Generic.List[System.Object]
+function Add-Mount {
+    param (
+        [string] $source,
+        [string] $target
+    )
 
+    $mount = "--mount type=bind,source={0},target={1}" -f $source, $target
+    if ($mounts -NotContains $mount) {
+        $mounts.Add($mount)
+    }
+}
+
+$algobattleArgs = New-Object System.Collections.Generic.List[System.Object]
+Add-Mount (Convert-Path "~/.algobattle_logs") "/root/.algobattle_logs"
 for ($i = 0; $i -lt $args.Length; $i++) {
     if ($args[$i] -like "*/*" -Or $args[$i] -like "*\*") {
         if ($args[$i] -like "-*=*") {
@@ -30,19 +41,16 @@ for ($i = 0; $i -lt $args.Length; $i++) {
             $containerPaths = New-Object System.Collections.Generic.List[System.Object]
             for ($j = 0; $j -lt $paths.Length; $j++) {
                 $path = (Force-Convert-Path $paths[$j])
-                $linuxPath = $path.Replace(":", "").Replace("\", "/")
-                $mounts.Add(("--mount type=bind,source={0},target=/docker_mounts/{1}" -f $path, $linuxPath))
-                $containerPaths.Add("/docker_mounts/{0}" -f $linuxPath)
+                $linuxPath = ("/docker_mounts/" + $path.Replace(":", "").Replace("\", "/"))
+                Add-Mount $path $linuxPath
+                $containerPaths.Add($linuxPath)
             }
-            $containerPaths = $containerPaths -join ","
-            $algobattleArgs.Add("$($prefix)=$($containerPaths)")
+            $algobattleArgs.Add(("{0}={1}" -f $prefix, $containerPaths -join ","))
         } else {
             $path = (Force-Convert-Path $args[$i])
-            $linuxPath = $path.Replace(":", "").Replace("\", "/")
-            Write-Output $path
-            Write-Output $linuxPath
-            $mounts.Add(("--mount type=bind,source={0},target=/docker_mounts/{1}" -f $path, $linuxPath))
-            $algobattleArgs.Add("/docker_mounts/{0}" -f $linuxPath)
+            $linuxPath = ("/docker_mounts/" + $path.Replace(":", "").Replace("\", "/"))
+            Add-Mount $path $linuxPath
+            $algobattleArgs.Add($linuxPath)
         }
     } else {
         $algobattleArgs.Add(($args[$i]))
@@ -50,7 +58,5 @@ for ($i = 0; $i -lt $args.Length; $i++) {
 }
 $mounts = $mounts -join " "
 $algobattleArgs = $algobattleArgs -join " "
-$logs = Convert-Path "~/.algobattle_logs"
-$cmd = "docker run -ti --rm -v //var/run/docker.sock:/var/run/docker.sock --mount type=bind,source={0},target=/~/.algobattle_logs {1} algobattle {2}" -f $logs, $mounts, $algobattleArgs
-Write-Output $cmd
+$cmd = "docker run -ti --rm -v //var/run/docker.sock:/var/run/docker.sock {0} algobattle {1}" -f $mounts, $algobattleArgs
 Invoke-Expression $cmd
