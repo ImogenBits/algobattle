@@ -3,15 +3,12 @@ from __future__ import annotations
 import logging
 from typing import Self
 
-from prettytable import PrettyTable, DOUBLE_BORDER
 from pydantic import BaseModel, validator
 from anyio import run, create_task_group, CapacityLimiter, TASK_STATUS_IGNORED
 from anyio.to_thread import current_default_thread_limiter
 from anyio.abc import TaskStatus
 
 from algobattle.battle import Battle, Iterated
-from algobattle.docker_util import Generator, Solver
-from algobattle.ui import Observer, Subject
 from algobattle.team import Matchup, TeamHandler, Team
 from algobattle.problem import Problem
 
@@ -40,7 +37,7 @@ class MatchConfig(BaseModel):
             raise TypeError
 
 
-class Match(Subject):
+class Match:
     """The Result of a whole Match."""
 
     def __init__(
@@ -49,14 +46,13 @@ class Match(Subject):
         battle_config: Battle.Config,
         problem: type[Problem],
         teams: TeamHandler,
-        observer: Observer | None = None,
     ) -> None:
         self.results: dict[Matchup, Battle] = {}
         self.config = config
         self.battle_config = battle_config
         self.problem = problem
         self.teams = teams
-        super().__init__(observer)
+        super().__init__()
 
     @classmethod
     async def _run_battle(
@@ -83,15 +79,14 @@ class Match(Subject):
         battle_config: Battle.Config,
         problem: type[Problem],
         teams: TeamHandler,
-        observer: Observer | None = None,
     ) -> Self:
         """Executes a match with the specified parameters."""
-        result = cls(config, battle_config, problem, teams, observer)
+        result = cls(config, battle_config, problem, teams)
         limiter = CapacityLimiter(config.parallel_battles)
         current_default_thread_limiter().total_tokens = config.parallel_battles
         async with create_task_group() as tg:
             for matchup in teams.matchups:
-                battle = config.battle_type(observer=observer)
+                battle = config.battle_type()
                 result.results[matchup] = battle
                 await tg.start(cls._run_battle, battle, matchup, battle_config, problem.min_size, limiter)
             return result
@@ -103,10 +98,9 @@ class Match(Subject):
         battle_config: Battle.Config,
         problem: type[Problem],
         teams: TeamHandler,
-        observer: Observer | None = None,
     ) -> Self:
         """Executes the match with the specified parameters in a new event loop."""
-        return run(cls.run, config, battle_config, problem, teams, observer)
+        return run(cls.run, config, battle_config, problem, teams)
 
     def calculate_points(self) -> dict[str, float]:
         """Calculate the number of points each team scored.
@@ -146,14 +140,3 @@ class Match(Subject):
             points[team.name] += points_per_battle * len(self.teams.excluded)
 
         return points
-
-    def display(self) -> str:
-        """Formats the match data into a table that can be printed to the terminal."""
-        table = PrettyTable(field_names=["Generator", "Solver", "Result"], min_width=5)
-        table.set_style(DOUBLE_BORDER)
-        table.align["Result"] = "r"
-
-        for matchup, result in self.results.items():
-            table.add_row([str(matchup.generator), str(matchup.solver), result.format_score(result.score())])
-
-        return f"Battle Type: {self.config.battle_type.name()}\n{table}"
