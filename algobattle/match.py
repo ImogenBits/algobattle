@@ -1,6 +1,6 @@
 """Central managing module for an algorithmic battle."""
+from dataclasses import dataclass, field
 import logging
-from typing import Self
 
 from pydantic import BaseModel, validator
 from anyio import create_task_group, CapacityLimiter, TASK_STATUS_IGNORED
@@ -36,22 +36,15 @@ class MatchConfig(BaseModel):
             raise TypeError
 
 
+@dataclass
 class Match:
     """The Result of a whole Match."""
 
-    def __init__(
-        self,
-        config: MatchConfig,
-        battle_config: Battle.Config,
-        problem: type[Problem],
-        teams: TeamHandler,
-    ) -> None:
-        self.results: dict[Matchup, Battle] = {}
-        self.config = config
-        self.battle_config = battle_config
-        self.problem = problem
-        self.teams = teams
-        super().__init__()
+    config: MatchConfig
+    battle_config: Battle.Config
+    problem: type[Problem]
+    teams: TeamHandler
+    results: dict[Matchup, Battle] = field(default_factory=dict, init=False)
 
     @classmethod
     async def _run_battle(
@@ -71,24 +64,16 @@ class Match:
             except Exception as e:
                 logger.critical(f"Unhandeled error during execution of battle!\n{e}")
 
-    @classmethod
-    async def run(
-        cls,
-        config: MatchConfig,
-        battle_config: Battle.Config,
-        problem: type[Problem],
-        teams: TeamHandler,
-    ) -> Self:
+    async def run(self) -> None:
         """Executes a match with the specified parameters."""
-        result = cls(config, battle_config, problem, teams)
-        limiter = CapacityLimiter(config.parallel_battles)
-        current_default_thread_limiter().total_tokens = config.parallel_battles
+        self.results = {}
+        limiter = CapacityLimiter(self.config.parallel_battles)
+        current_default_thread_limiter().total_tokens = self.config.parallel_battles
         async with create_task_group() as tg:
-            for matchup in teams.matchups:
-                battle = config.battle_type()
-                result.results[matchup] = battle
-                await tg.start(cls._run_battle, battle, matchup, battle_config, problem.min_size, limiter)
-            return result
+            for matchup in self.teams.matchups:
+                battle = self.config.battle_type()
+                self.results[matchup] = battle
+                await tg.start(self._run_battle, battle, matchup, self.battle_config, self.problem.min_size, limiter)
 
     def calculate_points(self) -> dict[str, float]:
         """Calculate the number of points each team scored.
