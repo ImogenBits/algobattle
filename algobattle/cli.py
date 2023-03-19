@@ -1,23 +1,29 @@
 """Main battle script. Executes all possible types of battles, see battle --help for all options."""
 from argparse import ArgumentParser, Namespace
-from contextlib import ExitStack
+import curses
 from functools import partial
 import sys
 import logging
 import datetime as dt
 from pathlib import Path
-from typing import Any, ClassVar, Literal, Mapping, Self
+from typing import Any, Callable, ClassVar, Literal, Mapping, Never, ParamSpec, Self, TypeVar
 import tomllib
+from importlib.metadata import version as pkg_version
 
 from pydantic import BaseModel, validator
+from anyio import sleep
+from anyio.abc import TaskGroup
+from prettytable import DOUBLE_BORDER, PrettyTable
 
 from algobattle.battle import Battle
 from algobattle.docker_util import DockerConfig, Image
-from algobattle.match import MatchConfig, Match
+from algobattle.match import MatchConfig, Match, Ui
 from algobattle.problem import Problem
 from algobattle.team import TeamHandler, TeamInfo
-from algobattle.ui import Ui
 from algobattle.util import check_path
+
+
+logger = logging.getLogger("algobattle.cli")
 
 
 def setup_logging(logging_path: Path, verbose_logging: bool, silent: bool):
@@ -232,14 +238,14 @@ def main():
 
     try:
         problem = Problem.import_from_path(problem)
-        with TeamHandler.build(config.teams, problem, config.docker, config.execution.safe_build) as teams, ExitStack() as stack:
+        with TeamHandler.build(config.teams, problem, config.docker, config.execution.safe_build) as teams:
+            match = Match(config.match, config.battle_config, problem, teams)
             if config.execution.display == "ui":
-                ui = Ui()
-                stack.enter_context(ui)
+                ui = CliUi(match)
             else:
                 ui = None
 
-            result = Match.run(config.match, config.battle_config, problem, teams, ui)
+            result = match.run(ui)
 
             logger.info("#" * 78)
             logger.info(result.display())
@@ -250,6 +256,93 @@ def main():
 
     except KeyboardInterrupt:
         logger.critical("Received keyboard interrupt, terminating execution.")
+
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def check_for_terminal(function: Callable[P, R]) -> Callable[P, R | None]:
+    """Ensure that we are attached to a terminal."""
+
+    def wrapper(*args: P.args, **kwargs: P.kwargs):
+        if not sys.stdout.isatty():
+            logger.error("Not attached to a terminal.")
+            return None
+        else:
+            return function(*args, **kwargs)
+
+    return wrapper
+
+
+class CliUi(Ui):
+    """The UI Class declares methods to output information to STDOUT."""
+
+    async def __aenter__(self) -> Self:
+        self.stdscr = curses.initscr()
+        curses.cbreak()
+        curses.noecho()
+        self.stdscr.keypad(True)
+        return await super().__aenter__()
+
+    async def __aexit__(self, _type, _value, _traceback):
+        self.close()
+
+    @check_for_terminal
+    def close(self) -> None:
+        """Restore the console."""
+        curses.nocbreak()
+        self.stdscr.keypad(False)
+        curses.echo()
+        curses.endwin()
+
+    async def loop(self) -> Never:
+        while True:
+            self.update()
+            await sleep(0.1)
+
+    @check_for_terminal
+    def update(self) -> None:
+        """Disaplys the current status of the match to the cli."""
+        match_display = self.display_match(self.match)
+        battle_display = ""
+
+        out = [
+            r"              _    _             _           _   _   _       ",
+            r"             / \  | | __ _  ___ | |__   __ _| |_| |_| | ___  ",
+            r"            / _ \ | |/ _` |/ _ \| |_ \ / _` | __| __| |/ _ \ ",
+            r"           / ___ \| | (_| | (_) | |_) | (_| | |_| |_| |  __/ ",
+            r"          /_/   \_\_|\__, |\___/|_.__/ \__,_|\__|\__|_|\___| ",
+            r"                      |___/                                  ",
+            f"Algobattle version {pkg_version(__package__)}",
+            match_display,
+            "",
+            battle_display,
+        ]
+
+        self.stdscr.clear()
+        self.stdscr.addstr(0, 0, "\n".join(out))
+        self.stdscr.refresh()
+        self.stdscr.nodelay(True)
+
+        # on windows curses swallows the ctrl+C event, we need to manually check for the control sequence
+        c = self.stdscr.getch()
+        if c == 3:
+            raise KeyboardInterrupt
+        else:
+            curses.flushinp()
+
+    @staticmethod
+    def display_match(match: Match) -> str:
+        """Formats the match data into a table that can be printed to the terminal."""
+        table = PrettyTable(field_names=["Generator", "Solver", "Result"], min_width=5)
+        table.set_style(DOUBLE_BORDER)
+        table.align["Result"] = "r"
+
+        for matchup, result in match.results.items():
+            table.add_row([str(matchup.generator), str(matchup.solver), result.format_score(result.score())])
+
+        return f"Battle Type: {match.config.battle_type.name()}\n{table}"
 
 
 if __name__ == "__main__":

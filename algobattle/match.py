@@ -1,11 +1,14 @@
 """Central managing module for an algorithmic battle."""
+from abc import ABC, abstractmethod
+from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 import logging
+from typing import Never, Self
 
 from pydantic import BaseModel, validator
-from anyio import create_task_group, CapacityLimiter, TASK_STATUS_IGNORED
+from anyio import create_task_group, CapacityLimiter, TASK_STATUS_IGNORED, sleep
 from anyio.to_thread import current_default_thread_limiter
-from anyio.abc import TaskStatus
+from anyio.abc import TaskStatus, TaskGroup
 
 from algobattle.battle import Battle, Iterated
 from algobattle.team import Matchup, TeamHandler, Team
@@ -64,12 +67,15 @@ class Match:
             except Exception as e:
                 logger.critical(f"Unhandeled error during execution of battle!\n{e}")
 
-    async def run(self) -> None:
+    async def run(self, ui: "Ui | None" = None) -> None:
         """Executes a match with the specified parameters."""
         self.results = {}
         limiter = CapacityLimiter(self.config.parallel_battles)
         current_default_thread_limiter().total_tokens = self.config.parallel_battles
-        async with create_task_group() as tg:
+        async with create_task_group() as tg, AsyncExitStack() as exit_stack:
+            if ui is not None:
+                ui.taskgroup = tg
+                await exit_stack.enter_async_context(ui)
             for matchup in self.teams.matchups:
                 battle = self.config.battle_type()
                 self.results[matchup] = battle
@@ -113,3 +119,29 @@ class Match:
             points[team.name] += points_per_battle * len(self.teams.excluded)
 
         return points
+
+
+@dataclass
+class Ui(ABC):
+    """Base class for a UI that observes a Match and displays its data."""
+
+    match: Match
+    taskgroup: TaskGroup | None = None
+
+    async def __aenter__(self) -> Self:
+        if self.taskgroup is not None:
+            await self.taskgroup.start(self.loop)
+        return self
+
+    async def __aexit__(self, _type, _value, _traceback):
+        pass
+
+    async def loop(self) -> Never:
+        while True:
+            self.update()
+            await sleep(0.1)
+
+    @abstractmethod
+    def update(self) -> None:
+        """Disaplys the current status of the match to the cli."""
+        raise NotImplementedError
