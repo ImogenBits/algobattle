@@ -339,7 +339,11 @@ class Image:
             response = container.wait(timeout=timeout)
             elapsed_time = round(default_timer() - start_time, 2)
             if response["StatusCode"] != 0:
-                raise ExecutionError(runtime=elapsed_time, exit_code=response["StatusCode"], error_message=container.logs().decode())
+                raise ExecutionError(
+                    runtime=elapsed_time,
+                    exit_code=response["StatusCode"],
+                    error_message=container.logs().decode(),
+                )
         except (Timeout, ConnectionError) as e:
             container.kill()
             elapsed_time = round(default_timer() - start_time, 2)
