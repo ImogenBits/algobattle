@@ -11,8 +11,7 @@ import tomllib
 from importlib.metadata import version as pkg_version
 
 from pydantic import BaseModel, validator
-from anyio import sleep
-from anyio.abc import TaskGroup
+from anyio import sleep, run
 from prettytable import DOUBLE_BORDER, PrettyTable
 
 from algobattle.battle import Battle
@@ -245,12 +244,12 @@ def main():
             else:
                 ui = None
 
-            result = match.run(ui)
+            run(match.run, ui)
 
             logger.info("#" * 78)
-            logger.info(result.display())
+            logger.info(CliUi.display_match(match))
             if config.match.points > 0:
-                points = result.calculate_points()
+                points = match.calculate_points()
                 for team, pts in points.items():
                     logger.info(f"Team {team} gained {pts:.1f} points.")
 
