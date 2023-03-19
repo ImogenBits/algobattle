@@ -49,13 +49,10 @@ class Match:
     teams: TeamHandler
     results: dict[Matchup, Battle] = field(default_factory=dict, init=False)
 
-    @classmethod
     async def _run_battle(
-        cls,
+        self,
         battle: Battle,
         matchup: Matchup,
-        config: Battle.Config,
-        min_size: int,
         limiter: CapacityLimiter,
         *,
         task_status: TaskStatus = TASK_STATUS_IGNORED,
@@ -63,7 +60,7 @@ class Match:
         async with limiter:
             task_status.started()
             try:
-                await battle.run_battle(matchup.generator.generator, matchup.solver.solver, config, min_size)
+                await battle.run_battle(matchup.generator.generator, matchup.solver.solver, self.battle_config, self.problem.min_size)
             except Exception as e:
                 logger.critical(f"Unhandeled error during execution of battle!\n{e}")
 
@@ -79,7 +76,7 @@ class Match:
             for matchup in self.teams.matchups:
                 battle = self.config.battle_type()
                 self.results[matchup] = battle
-                await tg.start(self._run_battle, battle, matchup, self.battle_config, self.problem.min_size, limiter)
+                await tg.start(self._run_battle, battle, matchup, limiter)
 
     def calculate_points(self) -> dict[str, float]:
         """Calculate the number of points each team scored.
