@@ -1,9 +1,12 @@
 """UI class, responsible for printing nicely formatted output to STDOUT."""
 import curses
+from dataclasses import dataclass
 import logging
 from sys import stdout
 from typing import Callable, ParamSpec, TypeVar
 from importlib.metadata import version as pkg_version
+from anyio import sleep
+from anyio.abc import TaskGroup
 
 from prettytable import PrettyTable, DOUBLE_BORDER
 
@@ -41,21 +44,21 @@ def display_match(match: Match) -> str:
     return f"Battle Type: {match.config.battle_type.name()}\n{table}"
 
 
+@dataclass
 class Ui:
     """The UI Class declares methods to output information to STDOUT."""
 
-    @check_for_terminal
-    def __init__(self) -> None:
-        super().__init__()
+    match: Match
+
+    async def __aenter__(self, taskgroup: TaskGroup) -> "Ui":
         self.stdscr = curses.initscr()
         curses.cbreak()
         curses.noecho()
         self.stdscr.keypad(True)
-
-    def __enter__(self) -> "Ui":
+        await taskgroup.start(self.loop)
         return self
 
-    def __exit__(self, _type, _value, _traceback):
+    async def __aexit__(self, _type, _value, _traceback):
         self.close()
 
     @check_for_terminal
@@ -66,10 +69,15 @@ class Ui:
         curses.echo()
         curses.endwin()
 
+    async def loop(self):
+        while True:
+            self.update()
+            await sleep(0.1)
+
     @check_for_terminal
-    def update(self, match: Match) -> None:
+    def update(self) -> None:
         """Disaplys the current status of the match to the cli."""
-        match_display = display_match(match)
+        match_display = display_match(self.match)
         battle_display = ""
 
         out = [
@@ -91,7 +99,6 @@ class Ui:
         self.stdscr.nodelay(True)
 
         # on windows curses swallows the ctrl+C event, we need to manually check for the control sequence
-        # ideally we'd be doing this from inside the docker image run wait loop too
         c = self.stdscr.getch()
         if c == 3:
             raise KeyboardInterrupt
