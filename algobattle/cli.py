@@ -310,14 +310,18 @@ class CliUi(Ui):
         """Disaplys the current status of the match to the cli."""
         match_display = self.display_match(self.match)
         battle_display = ""
-
+        logo = [
+            r"    _    _             _           _   _   _      ",
+            r"   / \  | | __ _  ___ | |__   __ _| |_| |_| | ___ ",
+            r"  / _ \ | |/ _` |/ _ \| |_ \ / _` | __| __| |/ _ ""\\",   # we need this to have the string end with a \
+            r" / ___ \| | (_| | (_) | |_) | (_| | |_| |_| |  __/",
+            r"/_/   \_\_|\__, |\___/|_.__/ \__,_|\__|\__|_|\___|",
+            r"            |___/                                 ",
+        ]
+        _, terminal_width = self.stdscr.getmaxyx()
         out = [
-            r"              _    _             _           _   _   _       ",
-            r"             / \  | | __ _  ___ | |__   __ _| |_| |_| | ___  ",
-            r"            / _ \ | |/ _` |/ _ \| |_ \ / _` | __| __| |/ _ \ ",
-            r"           / ___ \| | (_| | (_) | |_) | (_| | |_| |_| |  __/ ",
-            r"          /_/   \_\_|\__, |\___/|_.__/ \__,_|\__|\__|_|\___| ",
-            r"                      |___/                                  ",
+            line.center(terminal_width) for line in logo
+        ] + [
             f"Algobattle version {pkg_version(__package__)}",
             match_display,
             "",
