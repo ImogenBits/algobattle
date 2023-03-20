@@ -30,12 +30,13 @@ T = TypeVar("T")
 
 
 @dataclass
-class CombinedResults:
+class FightResult:
     """The result of one execution of the generator and the solver with the generated instance."""
 
-    score: float
-    generator: GeneratorResult | DockerError
-    solver: SolverResult | DockerError | None
+    score: float = 0
+    generator: GeneratorResult | DockerError | None = None
+    solver: SolverResult | DockerError | None = None
+    important: bool = False
 
 
 class Battle(ABC):
@@ -44,6 +45,10 @@ class Battle(ABC):
     _battle_types: ClassVar[dict[str, type["Battle"]]] = {}
 
     scoring_team: ClassVar[Role] = "solver"
+
+    def __init__(self) -> None:
+        self.fight_results = []
+        super().__init__()
 
     class Config(BaseModel):
         """Object containing the config variables the battle types use."""
@@ -109,7 +114,7 @@ class Battle(ABC):
         """Calculates the next instance size that should be fought over."""
         raise NotImplementedError
 
-    async def run_programs(
+    async def run_fight(
         self,
         generator: Generator,
         solver: Solver,
@@ -125,7 +130,7 @@ class Battle(ABC):
         solver_battle_input: Mapping[str, Encodable] = {},
         generator_battle_output: Mapping[str, type[Encodable]] = {},
         solver_battle_output: Mapping[str, type[Encodable]] = {},
-    ) -> CombinedResults:
+    ) -> FightResult:
         """Execute a single fight of a battle, running the generator and solver and handling any errors gracefully."""
         try:
             gen_result = await generator.run(
@@ -137,7 +142,9 @@ class Battle(ABC):
                 battle_output=generator_battle_output,
             )
         except DockerError as e:
-            return CombinedResults(score=1, generator=e, solver=None)
+            res = FightResult(score=1, generator=e, solver=None)
+            self.fight_results.append(res)
+            return res
 
         try:
             sol_result = await solver.run(
@@ -150,14 +157,18 @@ class Battle(ABC):
                 battle_output=solver_battle_output,
             )
         except DockerError as e:
-            return CombinedResults(score=0, generator=gen_result, solver=e)
+            res = FightResult(score=0, generator=gen_result, solver=e)
+            self.fight_results.append(res)
+            return res
 
         score = gen_result.problem.calculate_score(
             solution=sol_result.solution, generator_solution=gen_result.solution, size=size
         )
         score = max(0, min(1, float(score)))
         logger.info(f"The solver achieved a score of {score}.")
-        return CombinedResults(score, gen_result, sol_result)
+        res = FightResult(score, gen_result, sol_result)
+        self.fight_results.append(res)
+        return res
 
 
 class Iterated(Battle):
@@ -202,7 +213,7 @@ class Iterated(Battle):
             self.cap = config.iteration_cap
             self.current = min_size
             while alive:
-                result = await self.run_programs(generator, solver, self.current)
+                result = await self.run_fight(generator, solver, self.current)
                 score = result.score
                 if score < config.approximation_ratio:
                     logger.info(f"Solver does not meet the required solution quality at instance size "
@@ -270,7 +281,7 @@ class Averaged(Battle):
         self.scores: list[float] = []
         for i in range(config.iterations):
             self.curr_iter = i + 1
-            result = await self.run_programs(generator, solver, config.instance_size)
+            result = await self.run_fight(generator, solver, config.instance_size)
             self.scores.append(result.score)
 
     @inherit_docs
