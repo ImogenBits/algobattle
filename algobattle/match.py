@@ -59,6 +59,7 @@ class Match:
         task_status: TaskStatus = TASK_STATUS_IGNORED,
     ) -> None:
         async with limiter:
+            self.results[matchup] = battle
             self.current_matchups.append(matchup)
             task_status.started()
             try:
@@ -84,7 +85,6 @@ class Match:
                 await exit_stack.enter_async_context(ui)
             for matchup in self.teams.matchups:
                 battle = self.config.battle_type()
-                self.results[matchup] = battle
                 await tg.start(self._run_battle, battle, matchup, limiter)
 
     def calculate_points(self) -> dict[str, float]:
