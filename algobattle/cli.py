@@ -308,8 +308,6 @@ class CliUi(Ui):
     @check_for_terminal
     def update(self) -> None:
         """Disaplys the current status of the match to the cli."""
-        match_display = self.display_match(self.match)
-        battle_display = ""
         logo = [
             r"    _    _             _           _   _   _      ",
             r"   / \  | | __ _  ___ | |__   __ _| |_| |_| | ___ ",
@@ -323,10 +321,14 @@ class CliUi(Ui):
             line.center(terminal_width) for line in logo
         ] + [
             f"Algobattle version {pkg_version(__package__)}",
-            match_display,
-            "",
-            battle_display,
+            self.display_match(self.match),
         ]
+        for matchup in self.match.current_matchups:
+            out += [
+                "",
+                f"{matchup.generator.name} vs {matchup.solver.name}",
+                self.display_battle(self.match.results[matchup]),
+            ]
 
         self.stdscr.clear()
         self.stdscr.addstr(0, 0, "\n".join(out))
@@ -352,6 +354,10 @@ class CliUi(Ui):
 
         return f"Battle Type: {match.config.battle_type.name()}\n{table}"
 
+    @staticmethod
+    def display_battle(battle: Battle) -> str:
+        """Formats the battle data into a string that can be printed to the terminal."""
+        ...
 
 if __name__ == "__main__":
     main()
