@@ -47,7 +47,7 @@ class Battle(ABC):
     scoring_team: ClassVar[Role] = "solver"
 
     def __init__(self) -> None:
-        self.fight_results = []
+        self.fight_results: list[FightResult] = []
         super().__init__()
 
     class Config(BaseModel):
