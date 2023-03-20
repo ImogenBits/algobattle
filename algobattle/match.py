@@ -48,6 +48,7 @@ class Match:
     problem: type[Problem]
     teams: TeamHandler
     results: dict[Matchup, Battle] = field(default_factory=dict, init=False)
+    current_battles: list[Battle] = field(default_factory=list, init=False)
 
     async def _run_battle(
         self,
@@ -58,6 +59,7 @@ class Match:
         task_status: TaskStatus = TASK_STATUS_IGNORED,
     ) -> None:
         async with limiter:
+            self.current_battles.append(battle)
             task_status.started()
             try:
                 await battle.run_battle(
@@ -68,6 +70,8 @@ class Match:
                 )
             except Exception as e:
                 logger.critical(f"Unhandeled error during execution of battle!\n{e}")
+            finally:
+                self.current_battles.remove(battle)
 
     async def run(self, ui: "Ui | None" = None) -> None:
         """Executes a match with the specified parameters."""
