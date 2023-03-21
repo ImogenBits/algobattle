@@ -15,7 +15,7 @@ from anyio import sleep, run
 from prettytable import DOUBLE_BORDER, PrettyTable
 
 from algobattle.battle import Battle
-from algobattle.docker_util import DockerConfig, Image
+from algobattle.docker_util import DockerConfig, DockerError, Image
 from algobattle.match import MatchConfig, Match, Ui
 from algobattle.problem import Problem
 from algobattle.team import TeamHandler, TeamInfo
@@ -357,7 +357,22 @@ class CliUi(Ui):
     @staticmethod
     def display_battle(battle: Battle) -> str:
         """Formats the battle data into a string that can be printed to the terminal."""
-        ...
+        fights = battle.fight_results[-3:] if len(battle.fight_results) >= 3 else battle.fight_results
+        out = []
+        for fight in fights:
+            data = [
+                f"Size: {fight.size}",
+                f"{name}: {val}" for name, val in fight.params.items()
+            ]
+            if isinstance(fight.generator, DockerError):
+                data.append("Generator failed!")
+            elif isinstance(fight.solver, DockerError):
+                data.append("Solver failed!")
+            else:
+                data.append("Successful run.")
+            data.append(f"Score: {fight.score}")
+            out.append("\n".join(data))
+        return "\n\n".join(out)
 
 if __name__ == "__main__":
     main()
