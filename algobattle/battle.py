@@ -2,7 +2,7 @@
 
 The battle class is a base class for specific type of battle that can be executed.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib.metadata import entry_points
 import logging
 from abc import abstractmethod, ABC
@@ -33,10 +33,12 @@ T = TypeVar("T")
 class FightResult:
     """The result of one execution of the generator and the solver with the generated instance."""
 
+    size: int
     score: float = 0
     generator: GeneratorResult | DockerError | None = None
     solver: SolverResult | DockerError | None = None
     important: bool = False
+    params: dict[str, Any] = field(default_factory=dict)
 
 
 class Battle(ABC):
@@ -142,7 +144,7 @@ class Battle(ABC):
                 battle_output=generator_battle_output,
             )
         except DockerError as e:
-            res = FightResult(score=1, generator=e, solver=None)
+            res = FightResult(size, score=1, generator=e, solver=None)
             self.fight_results.append(res)
             return res
 
@@ -157,7 +159,7 @@ class Battle(ABC):
                 battle_output=solver_battle_output,
             )
         except DockerError as e:
-            res = FightResult(score=0, generator=gen_result, solver=e)
+            res = FightResult(size, score=0, generator=gen_result, solver=e)
             self.fight_results.append(res)
             return res
 
@@ -166,7 +168,7 @@ class Battle(ABC):
         )
         score = max(0, min(1, float(score)))
         logger.info(f"The solver achieved a score of {score}.")
-        res = FightResult(score, gen_result, sol_result)
+        res = FightResult(size, score, gen_result, sol_result)
         self.fight_results.append(res)
         return res
 
