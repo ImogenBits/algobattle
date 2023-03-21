@@ -40,6 +40,17 @@ class FightResult:
     important: bool = False
     params: dict[str, Any] = field(default_factory=dict)
 
+    @staticmethod
+    def get_params(timeout: float | None = ..., space: int | None = ..., cpus: int = ...) -> dict[str, Any]:
+        res = {}
+        if timeout is not Ellipsis:
+            res["Timeout"] = timeout
+        if space is not Ellipsis:
+            res["Space"] = space
+        if cpus is not Ellipsis:
+            res["Cpus"] = cpus
+        return res
+
 
 class Battle(ABC):
     """Abstract Base class for classes that execute a specific kind of battle."""
@@ -144,7 +155,17 @@ class Battle(ABC):
                 battle_output=generator_battle_output,
             )
         except DockerError as e:
-            res = FightResult(size, score=1, generator=e, solver=None)
+            res = FightResult(
+                size,
+                score=int(self.scoring_team == "solver"),
+                generator=e,
+                solver=None,
+                params=FightResult.get_params(
+                    timeout_generator,
+                    space_generator,
+                    cpus_generator,
+                ),
+            )
             self.fight_results.append(res)
             return res
 
@@ -159,7 +180,17 @@ class Battle(ABC):
                 battle_output=solver_battle_output,
             )
         except DockerError as e:
-            res = FightResult(size, score=0, generator=gen_result, solver=e)
+            res = FightResult(
+                size,
+                score=int(self.scoring_team == "generator"),
+                generator=gen_result,
+                solver=e,
+                params=FightResult.get_params(
+                    timeout_solver,
+                    space_solver,
+                    cpus_solver,
+                ),
+            )
             self.fight_results.append(res)
             return res
 
