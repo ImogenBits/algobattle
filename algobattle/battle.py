@@ -145,20 +145,19 @@ class Battle(ABC):
         solver_battle_output: Mapping[str, type[Encodable]] = {},
     ) -> FightResult:
         """Execute a single fight of a battle, running the generator and solver and handling any errors gracefully."""
-        try:
-            gen_result = await generator.run(
-                size=size,
-                timeout=timeout_generator,
-                space=space_generator,
-                cpus=cpus_generator,
-                battle_input=generator_battle_input,
-                battle_output=generator_battle_output,
-            )
-        except DockerError as e:
+        gen_result = await generator.run(
+            size=size,
+            timeout=timeout_generator,
+            space=space_generator,
+            cpus=cpus_generator,
+            battle_input=generator_battle_input,
+            battle_output=generator_battle_output,
+        )
+        if isinstance(gen_result.result, DockerError):
             res = FightResult(
                 size,
                 score=int(self.scoring_team == "solver"),
-                generator=e,
+                generator=gen_result,
                 solver=None,
                 params=FightResult.get_params(
                     timeout_generator,
@@ -169,22 +168,21 @@ class Battle(ABC):
             self.fight_results.append(res)
             return res
 
-        try:
-            sol_result = await solver.run(
-                gen_result.problem,
-                size=size,
-                timeout=timeout_solver,
-                space=space_solver,
-                cpus=cpus_solver,
-                battle_input=solver_battle_input,
-                battle_output=solver_battle_output,
-            )
-        except DockerError as e:
+        sol_result = await solver.run(
+            gen_result.result.problem,
+            size=size,
+            timeout=timeout_solver,
+            space=space_solver,
+            cpus=cpus_solver,
+            battle_input=solver_battle_input,
+            battle_output=solver_battle_output,
+        )
+        if isinstance(sol_result.result, DockerError):
             res = FightResult(
                 size,
                 score=int(self.scoring_team == "generator"),
                 generator=gen_result,
-                solver=e,
+                solver=sol_result,
                 params=FightResult.get_params(
                     timeout_solver,
                     space_solver,
@@ -194,8 +192,8 @@ class Battle(ABC):
             self.fight_results.append(res)
             return res
 
-        score = gen_result.problem.calculate_score(
-            solution=sol_result.solution, generator_solution=gen_result.solution, size=size
+        score = gen_result.result.problem.calculate_score(
+            solution=sol_result.result, generator_solution=gen_result.result.solution, size=size
         )
         score = max(0, min(1, float(score)))
         logger.info(f"The solver achieved a score of {score}.")
