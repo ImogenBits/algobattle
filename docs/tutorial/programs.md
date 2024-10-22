@@ -3,7 +3,7 @@
 ## Problems
 
 Now that we've got our project setup we can take a look at what we actually need to do: solve some problem. In this page
-we'll work with the [Pairsum problem](https://github.com/Benezivas/algobattle-problems/tree/main/problems/pairsum). It's
+we'll work with the [Pairsum problem](https://github.com/Benezivas/algobattle-problems/tree/main/algobattle_problems/pairsum). It's
 a nice and easy starting point to get familiar with things, but you can also jump right into things with the problem
 your course instructors gave you.
 
